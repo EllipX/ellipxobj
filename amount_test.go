@@ -29,12 +29,12 @@ func TestAmount(t *testing.T) {
 		t.Errorf("expected 123.456789123456 but got %s", a.String())
 	}
 	a.SetExp(5)
-	if a.String() != "123.45678" {
-		t.Errorf("expected 123.45678 but got %s", a.String())
+	if a.String() != "123.45679" {
+		t.Errorf("expected 123.45679 but got %s", a.String())
 	}
 	a.SetExp(6)
-	if a.String() != "123.456780" {
-		t.Errorf("expected 123.456780 but got %s", a.String())
+	if a.String() != "123.456790" {
+		t.Errorf("expected 123.456790 but got %s", a.String())
 	}
 
 	a = NewAmount(42000, 3)

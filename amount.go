@@ -110,8 +110,15 @@ func (a *Amount) SetExp(e int) *Amount {
 	}
 
 	// e < a.Decimals
+	// using the trick of adding 0.5 (half of exp10(sub)) to cause rounding to happen
 	sub := a.Decimals - e
+	e10 := exp10(sub)
+	e10half := new(big.Int).Quo(e10, big.NewInt(2)) // 1/2
+	if a.Value.Sign() < 0 {
+		e10half = e10half.Mul(e10half, big.NewInt(-1))
+	}
 	a.Decimals = e
+	a.Value = a.Value.Add(a.Value, e10half)
 	a.Value = a.Value.Quo(a.Value, exp10(sub))
 	return a
 }
