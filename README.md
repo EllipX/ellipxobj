@@ -1,3 +1,5 @@
+[![GoDoc](https://godoc.org/github.com/EllipX/ellipxobj?status.svg)](https://godoc.org/github.com/EllipX/ellipxobj)
+
 # EllipX objects
 
 These structures are shared among various parts of the system in order to ensure consistent structure, and can be used to communicate with APIs.
