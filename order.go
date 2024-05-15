@@ -41,6 +41,9 @@ func (o *Order) IsValid() error {
 	if !o.Status.IsValid() {
 		return ErrOrderStatusNotValid
 	}
+	if o.Amount == nil && o.SpendLimit == nil {
+		return ErrOrderNeedsAmount
+	}
 
 	return nil
 }

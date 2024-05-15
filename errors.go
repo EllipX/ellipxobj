@@ -7,4 +7,5 @@ var (
 	ErrBrokerIdMissing     = errors.New("broker id is required")
 	ErrOrderTypeNotValid   = errors.New("order type is not valid")
 	ErrOrderStatusNotValid = errors.New("order status is not valid")
+	ErrOrderNeedsAmount    = errors.New("order amount or spend limit is required")
 )
