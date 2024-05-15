@@ -29,10 +29,25 @@ func (a Amount) Float() *big.Float {
 	return res.Quo(res, exp10f(a.Decimals))
 }
 
+// NewAmountFromFloat64 return a new [Amount] initialized with the value f stored with the specified number of decimals
+func NewAmountFromFloat64(f float64, decimals int) (*Amount, big.Accuracy) {
+	return NewAmountFromFloat(big.NewFloat(f), decimals)
+}
+
 // NewAmountFromFloat return a new [Amount] initialized with the value f stored with the specified number of decimals
 func NewAmountFromFloat(f *big.Float, decimals int) (*Amount, big.Accuracy) {
 	// multiply f by 10**decimals
-	val, acc := new(big.Float).Mul(f, exp10f(decimals)).Int(nil)
+	//
+	// Int returns the result of truncating x towards zero
+	f = new(big.Float).Mul(f, exp10f(decimals))
+
+	// add 0.5 so that f.Int returns a rounded value
+	if f.Sign() < 0 {
+		f = f.Add(f, big.NewFloat(-0.5))
+	} else {
+		f = f.Add(f, big.NewFloat(0.5))
+	}
+	val, acc := f.Int(nil)
 
 	a := &Amount{
 		Value:    val,
@@ -44,7 +59,7 @@ func NewAmountFromFloat(f *big.Float, decimals int) (*Amount, big.Accuracy) {
 
 // NewAmountFromString return a new [Amount] initialized with the passed string value
 func NewAmountFromString(s string, decimals int) (*Amount, error) {
-	f, _, err := big.ParseFloat(s, 0, big.MaxPrec, big.ToNearestEven)
+	f, _, err := big.ParseFloat(s, 0, 1024, big.ToNearestEven)
 	if err != nil {
 		return nil, err
 	}

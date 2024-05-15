@@ -9,7 +9,7 @@ func TestAmount(t *testing.T) {
 		t.Errorf("expected 42.000 but got %s", a.String())
 	}
 
-	a = NewAmount(42000, 5)
+	a, _ = NewAmountFromFloat64(0.42, 5)
 	if a.String() != "0.42000" {
 		t.Errorf("expected 0.42000 but got %s", a.String())
 	}
