@@ -1,7 +1,8 @@
 package ellipxobj
 
-type SignedOrder struct {
-	Order      string       `json:"order"` // json-encoded
+type SignedObject struct {
+	Type       string       `json:"type"`   // order | trade
+	Object     string       `json:"object"` // base64 encoded json
 	Signatures []*Signature `json:"sigs"`
 }
 
