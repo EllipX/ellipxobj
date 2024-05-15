@@ -20,6 +20,12 @@ type Order struct {
 	StopPrice   *Amount     `json:"stop_price,omitempty"`  // ignored if flag Stop is not set
 }
 
+type OrderMeta struct {
+	OrderId  string  `json:"id"`
+	BrokerId string  `json:"iss"`
+	Unique   *TimeId `json:"uniq,omitempty"`
+}
+
 func NewOrder(pair PairName, typ OrderType) *Order {
 	res := &Order{
 		RequestTime: uint64(time.Now().Unix()),
@@ -55,6 +61,15 @@ func (o *Order) IsValid() error {
 	}
 
 	return nil
+}
+
+func (o *Order) Meta() *OrderMeta {
+	res := &OrderMeta{
+		OrderId:  o.OrderId,
+		BrokerId: o.BrokerId,
+		Unique:   o.Unique,
+	}
+	return res
 }
 
 // Reverse reverses an order's pair, updating Amount and Price accordingly

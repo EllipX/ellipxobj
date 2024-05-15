@@ -1,7 +1,12 @@
 package ellipxobj
 
+// Trade represents a trade that happened, where two orders matched
 type Trade struct {
-	Pair      PairName
-	BuyOrder  TimeId
-	SellOrder TimeId
+	Id     *TimeId // trade id
+	Pair   PairName
+	Bid    *OrderMeta
+	Ask    *OrderMeta
+	Type   OrderType // taker's order type
+	Amount *Amount
+	Price  *Amount
 }
