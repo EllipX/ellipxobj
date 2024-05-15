@@ -99,13 +99,15 @@ func (a Amount) String() string {
 }
 
 type amountJson struct {
-	Value    string `json:"v"`
-	Decimals int    `json:"dec"`
+	Value    string  `json:"v"`
+	Decimals int     `json:"dec"`
+	Float    float64 `json:"f"`
 }
 
 func (a *Amount) MarshalJSON() ([]byte, error) {
-	// an amount when marshalled becomes an object {"v":"123456","dec":5}
-	v := &amountJson{Value: a.Value.Text(10), Decimals: a.Decimals}
+	// an amount when marshalled becomes an object {"v":"123456","dec":5,"f":1.23456}
+	f, _ := a.Float().Float64()
+	v := &amountJson{Value: a.Value.Text(10), Decimals: a.Decimals, Float: f}
 	return json.Marshal(v)
 }
 
