@@ -1,5 +1,10 @@
 package ellipxobj
 
+import (
+	"encoding/json"
+	"fmt"
+)
+
 type OrderStatus int
 
 const (
@@ -57,4 +62,22 @@ func OrderStatusByString(s string) OrderStatus {
 	default:
 		return OrderInvalid
 	}
+}
+
+func (s OrderStatus) MarshalJSON() ([]byte, error) {
+	return json.Marshal(s.String())
+}
+
+func (s *OrderStatus) UnmarshalJSON(b []byte) error {
+	var str string
+	err := json.Unmarshal(b, &str)
+	if err != nil {
+		return err
+	}
+	v := OrderStatusByString(str)
+	if v == OrderInvalid {
+		return fmt.Errorf("invalid order status %s", s)
+	}
+	*s = v
+	return nil
 }
