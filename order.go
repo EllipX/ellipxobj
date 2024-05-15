@@ -6,6 +6,7 @@ type Order struct {
 	RequestTime uint64      `json:"iat"`    // unix timestamp when the order was placed
 	Unique      TimeId      `json:"uniq"`   // unique ID allocated on order igress
 	Pair        PairName    `json:"pair"`   // the name of the pair the order is on
+	Type        OrderType   `json:"type"`   // type of order (buy or sell)
 	Status      OrderStatus `json:"status"` // new orders will always be in "pending" state
 	Flags       OrderFlags  `json:"flags"`
 	Amount      *Amount     `json:"amount,omitempty"`      // optional amount, if nil SpendLimit must be set
@@ -31,6 +32,7 @@ func (o *Order) Reverse() *Order {
 
 	// reverse pair
 	res.Pair = PairName{o.Pair[1], o.Pair[0]}
+	res.Type = o.Type.Reverse()
 
 	// reverse amount and spend limit
 	res.Amount, res.SpendLimit = o.SpendLimit, o.Amount

@@ -15,11 +15,3 @@ The pair has two elements:
 
 If the order is a buy order, it means exchanging the first element for the second. Sell order works the other way around.
 
-It is possible to reverse an order, in which case:
-
-* Pairs are exchanged
-* Amount is multiplied by the price
-* Price becomes 1/price
-
-If you want to buy 2 bitcoins at 5$/bitcoin, it means selling 10$ at 0.2 BTC per USD.
-
