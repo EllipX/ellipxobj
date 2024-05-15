@@ -19,6 +19,24 @@ func TestAmount(t *testing.T) {
 		t.Errorf("expected 0.0000042000 but got %s", a.String())
 	}
 
+	a, _ = NewAmountFromFloat64(123.456, 0)
+	if a.String() != "123.45600" {
+		t.Errorf("expected 123.45600 but got %s", a.String())
+	}
+
+	a, _ = NewAmountFromFloat64(123.456789123456, 0)
+	if a.String() != "123.456789123456" {
+		t.Errorf("expected 123.456789123456 but got %s", a.String())
+	}
+	a.SetExp(5)
+	if a.String() != "123.45678" {
+		t.Errorf("expected 123.45678 but got %s", a.String())
+	}
+	a.SetExp(6)
+	if a.String() != "123.456780" {
+		t.Errorf("expected 123.456780 but got %s", a.String())
+	}
+
 	a = NewAmount(42000, 3)
 	b := NewAmount(500000, 5)
 
