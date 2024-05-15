@@ -2,7 +2,10 @@ package ellipxobj
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -44,6 +47,34 @@ func (t TimeId) Time() time.Time {
 
 func (t TimeId) String() string {
 	return fmt.Sprintf("%d:%d:%d", t.Unix, t.Nano, t.Index)
+}
+
+func (t TimeId) MarshalJSON() ([]byte, error) {
+	return json.Marshal(t.String())
+}
+
+func (t *TimeId) UnmarshalJSON(b []byte) error {
+	var s string
+	err := json.Unmarshal(b, &s)
+	if err != nil {
+		return err
+	}
+	vA := strings.SplitN(s, ":", 3)
+	if len(vA) != 3 {
+		return fmt.Errorf("invalid format for TimeId: %s", s)
+	}
+	vN := make([]uint64, 3)
+	for n, sub := range vA {
+		vN[n], err = strconv.ParseUint(sub, 10, 64)
+		if err != nil {
+			return fmt.Errorf("failed to parse TimeId element %s: %w", sub, err)
+		}
+	}
+
+	t.Unix = vN[0]
+	t.Nano = uint32(vN[1])
+	t.Index = uint32(vN[2])
+	return nil
 }
 
 // Bytes returns a 128bits bigendian sortable version of this TimeId

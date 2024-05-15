@@ -24,6 +24,7 @@ func TestOrder(t *testing.T) {
 func TestMarshalOrder(t *testing.T) {
 	a := NewOrder(Pair("BTC", "USD"), TypeBid).SetId("a9039a38-3bd4-4084-95d1-3548c1873c8b", "test")
 	a.RequestTime = 1715773941
+	//a.Unique = &TimeId{Unix: 1715773941, Nano: 987654321, Index: 42}
 	a.Amount, _ = NewAmountFromFloat64(1, 8)
 	a.Price, _ = NewAmountFromString("5", 5)
 
