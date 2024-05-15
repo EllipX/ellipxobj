@@ -1,7 +1,9 @@
 package ellipxobj
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -10,29 +12,29 @@ import (
 
 // Amount is a fixed point value
 type Amount struct {
-	Value    *big.Int
-	Decimals int
+	value *big.Int
+	exp   int
 }
 
 // NewAmount returns a new Amount object set to the specific value and decimals
 func NewAmount(value int64, decimals int) *Amount {
 	a := &Amount{
-		Value:    big.NewInt(value),
-		Decimals: decimals,
+		value: big.NewInt(value),
+		exp:   decimals,
 	}
 	return a
 }
 
 func (a Amount) Float() *big.Float {
-	res := new(big.Float).SetInt(a.Value)
+	res := new(big.Float).SetInt(a.value)
 
-	// divide by 10**Decimals
-	return res.Quo(res, exp10f(a.Decimals))
+	// divide by 10**exp
+	return res.Quo(res, exp10f(a.exp))
 }
 
 // NewAmountFromFloat64 return a new [Amount] initialized with the value f stored with the specified number of decimals
-func NewAmountFromFloat64(f float64, decimals int) (*Amount, big.Accuracy) {
-	return NewAmountFromFloat(big.NewFloat(f), decimals)
+func NewAmountFromFloat64(f float64, exp int) (*Amount, big.Accuracy) {
+	return NewAmountFromFloat(big.NewFloat(f), exp)
 }
 
 // NewAmountFromFloat return a new [Amount] initialized with the value f stored with the specified number of decimals
@@ -61,8 +63,8 @@ func NewAmountFromFloat(f *big.Float, decimals int) (*Amount, big.Accuracy) {
 	val, acc := f.Int(nil)
 
 	a := &Amount{
-		Value:    val,
-		Decimals: decimals,
+		value: val,
+		exp:   decimals,
 	}
 
 	return a, acc
@@ -82,81 +84,83 @@ func NewAmountFromString(s string, decimals int) (*Amount, error) {
 // Mul sets a=x*y and returns a
 func (a *Amount) Mul(x, y *Amount) (*Amount, big.Accuracy) {
 	res := new(big.Float).Mul(x.Float(), y.Float())
-	res = res.Mul(res, exp10f(a.Decimals))
+	res = res.Mul(res, exp10f(a.exp))
 
 	var acc big.Accuracy
-	a.Value, acc = res.Int(a.Value)
+	a.value, acc = res.Int(a.value)
 	return a, acc
 }
 
 // Reciprocal returns 1/a in a newly allocated [Amount]
 func (a *Amount) Reciprocal() (*Amount, big.Accuracy) {
 	v := new(big.Float).Quo(new(big.Float).SetInt64(1), a.Float())
-	return NewAmountFromFloat(v, a.Decimals)
+	return NewAmountFromFloat(v, a.exp)
 }
 
 // SetExp sets the number of decimals (exponent) of the amount, truncating or adding zeroes as needed
 func (a *Amount) SetExp(e int) *Amount {
-	if a.Decimals == e {
+	if a.exp == e {
 		// no change
 		return a
 	}
 
-	if e > a.Decimals {
-		add := e - a.Decimals
-		a.Decimals = e
-		a.Value = a.Value.Mul(a.Value, exp10(add))
+	if e > a.exp {
+		add := e - a.exp
+		a.exp = e
+		a.value = a.value.Mul(a.value, exp10(add))
 		return a
 	}
 
-	// e < a.Decimals
+	// e < a.exp
 	// using the trick of adding 0.5 (half of exp10(sub)) to cause rounding to happen
-	sub := a.Decimals - e
+	sub := a.exp - e
 	e10 := exp10(sub)
 	e10half := new(big.Int).Quo(e10, big.NewInt(2)) // 1/2
-	if a.Value.Sign() < 0 {
+	if a.value.Sign() < 0 {
 		e10half = e10half.Mul(e10half, big.NewInt(-1))
 	}
-	a.Decimals = e
-	a.Value = a.Value.Add(a.Value, e10half)
-	a.Value = a.Value.Quo(a.Value, exp10(sub))
+	a.exp = e
+	a.value = a.value.Add(a.value, e10half)
+	a.value = a.value.Quo(a.value, exp10(sub))
 	return a
 }
 
 func (a Amount) String() string {
 	// rather than converting to float, we simply convert the int to string in base 10 and add a decimal . at the right place
-	s := a.Value.Text(10)
+	s := a.value.Text(10)
 
-	if len(s) > a.Decimals {
-		p := len(s) - a.Decimals
+	if len(s) > a.exp {
+		p := len(s) - a.exp
 		return s[:p] + "." + s[p:]
 	}
-	if len(s) < a.Decimals {
+	if len(s) < a.exp {
 		// need to add zeroes
-		p := a.Decimals - len(s)
+		p := a.exp - len(s)
 		return "0." + strings.Repeat("0", p) + s
 	}
 
-	// len(s) == a.Decimals
+	// len(s) == a.exp
 	return "0." + s
 }
 
 type amountJson struct {
-	Value    string  `json:"v"`
-	Decimals int     `json:"dec"`
-	Float    float64 `json:"f"`
+	Value string  `json:"v"`
+	Exp   int     `json:"e"`
+	Float float64 `json:"f"`
 }
 
 func (a *Amount) MarshalJSON() ([]byte, error) {
 	// an amount when marshalled becomes an object {"v":"123456","dec":5,"f":1.23456}
 	f, _ := a.Float().Float64()
-	v := &amountJson{Value: a.Value.Text(10), Decimals: a.Decimals, Float: f}
+	v := &amountJson{Value: a.value.Text(10), Exp: a.exp, Float: f}
 	return json.Marshal(v)
 }
 
 func (a *Amount) UnmarshalJSON(b []byte) error {
 	var v any
-	err := json.Unmarshal(b, &v)
+	dec := json.NewDecoder(bytes.NewReader(b))
+	dec.UseNumber()
+	err := dec.Decode(&v)
 	if err != nil {
 		return err
 	}
@@ -164,12 +168,49 @@ func (a *Amount) UnmarshalJSON(b []byte) error {
 	switch in := v.(type) {
 	case string:
 		// parse string
-		na, err := NewAmountFromString(in, a.Decimals)
+		na, err := NewAmountFromString(in, 0)
 		if err != nil {
 			return err
 		}
 		*a = *na
 		return nil
+	case json.Number:
+		// parse number
+		na, err := NewAmountFromString(string(in), 0)
+		if err != nil {
+			return err
+		}
+		*a = *na
+		return nil
+	case map[string]any:
+		// we expect to find v+e or f
+		// {"v":"100000000","e":8,"f":1}
+		v, vok := in["v"].(string)
+		e, eok := in["e"].(json.Number)
+		if vok && eok {
+			realV, vok := new(big.Int).SetString(v, 0)
+			if !vok {
+				return errors.New("failed to parse v")
+			}
+			realE, err := e.Int64()
+			if err != nil {
+				return err
+			}
+			a.value = realV
+			a.exp = int(realE)
+			return nil
+		}
+		// attempt f
+		f, fok := in["f"].(json.Number)
+		if fok {
+			na, err := NewAmountFromString(string(f), 0)
+			if err != nil {
+				return err
+			}
+			*a = *na
+			return nil
+		}
+		return fmt.Errorf("failed to parse object as Amount")
 	default:
 		return fmt.Errorf("unsupported amount type %T", v)
 	}
