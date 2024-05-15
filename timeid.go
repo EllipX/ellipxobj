@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+const TimeIdDataLen = 16 // number of bytes in a timeid
+
 type TimeId struct {
 	Unix  uint64 `json:"unix"`
 	Nano  uint32 `json:"nano"` // [0, 999999999]
