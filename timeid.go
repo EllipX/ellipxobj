@@ -37,6 +37,7 @@ func NewUniqueTimeId() *TimeId {
 	return t
 }
 
+// Time returns the [TimeId] timestamp, which may be when the ID was generated
 func (t TimeId) Time() time.Time {
 	return time.Unix(int64(t.Unix), int64(t.Nano))
 }
@@ -46,8 +47,8 @@ func (t TimeId) String() string {
 }
 
 // Bytes returns a 128bits bigendian sortable version of this TimeId
-func (t TimeId) Bytes() []byte {
-	res := make([]byte, 16)
+func (t TimeId) Bytes() [TimeIdDataLen]byte {
+	var res [TimeIdDataLen]byte
 	binary.BigEndian.PutUint64(res[:8], t.Unix)
 	binary.BigEndian.PutUint32(res[8:12], t.Nano)
 	binary.BigEndian.PutUint32(res[12:], t.Index)
