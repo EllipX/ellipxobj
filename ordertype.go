@@ -1,5 +1,10 @@
 package ellipxobj
 
+import (
+	"encoding/json"
+	"fmt"
+)
+
 type OrderType int
 
 const (
@@ -37,6 +42,24 @@ func (t OrderType) IsValid() bool {
 	default:
 		return false
 	}
+}
+
+func (t OrderType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(t.String())
+}
+
+func (t *OrderType) UnmarshalJSON(b []byte) error {
+	var s string
+	err := json.Unmarshal(b, &s)
+	if err != nil {
+		return err
+	}
+	v := OrderTypeByString(s)
+	if v == TypeInvalid {
+		return fmt.Errorf("invalid order type %q", s)
+	}
+	*t = v
+	return nil
 }
 
 func OrderTypeByString(v string) OrderType {
