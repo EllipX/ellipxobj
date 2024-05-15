@@ -30,6 +30,15 @@ func (t OrderType) Reverse() OrderType {
 	}
 }
 
+func (t OrderType) IsValid() bool {
+	switch t {
+	case TypeBid, TypeAsk:
+		return true
+	default:
+		return false
+	}
+}
+
 func OrderTypeByString(v string) OrderType {
 	switch v {
 	case "bid":

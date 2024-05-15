@@ -31,6 +31,15 @@ func (s OrderStatus) String() string {
 	}
 }
 
+func (s OrderStatus) IsValid() bool {
+	switch s {
+	case OrderPending, OrderRunning, OrderOpen, OrderStop, OrderDone, OrderCancel:
+		return true
+	default:
+		return false
+	}
+}
+
 func OrderStatusByString(s string) OrderStatus {
 	switch s {
 	case "pending":

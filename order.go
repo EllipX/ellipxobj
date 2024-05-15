@@ -1,28 +1,48 @@
 package ellipxobj
 
+import "time"
+
 type Order struct {
-	OrderId     string      `json:"id"`     // order ID assigned by the broker
-	BrokerId    string      `json:"iss"`    // id of the broker
-	RequestTime uint64      `json:"iat"`    // unix timestamp when the order was placed
-	Unique      TimeId      `json:"uniq"`   // unique ID allocated on order igress
-	Pair        PairName    `json:"pair"`   // the name of the pair the order is on
-	Type        OrderType   `json:"type"`   // type of order (buy or sell)
-	Status      OrderStatus `json:"status"` // new orders will always be in "pending" state
-	Flags       OrderFlags  `json:"flags"`
+	OrderId     string      `json:"id"`                    // order ID assigned by the broker
+	BrokerId    string      `json:"iss"`                   // id of the broker
+	RequestTime uint64      `json:"iat"`                   // unix timestamp when the order was placed
+	Unique      *TimeId     `json:"uniq,omitempty"`        // unique ID allocated on order igress
+	Pair        PairName    `json:"pair"`                  // the name of the pair the order is on
+	Type        OrderType   `json:"type"`                  // type of order (buy or sell)
+	Status      OrderStatus `json:"status"`                // new orders will always be in "pending" state
+	Flags       OrderFlags  `json:"flags"`                 // order flags
 	Amount      *Amount     `json:"amount,omitempty"`      // optional amount, if nil SpendLimit must be set
 	Price       *Amount     `json:"price,omitempty"`       // price, if nil this will be a market order
 	SpendLimit  *Amount     `json:"spend_limit,omitempty"` // optional spending limit, if nil Amount must be set
 	StopPrice   *Amount     `json:"stop_price,omitempty"`  // ignored if flag Stop is not set
 }
 
-type SignedOrder struct {
-	Order      string            `json:"order"` // json-encoded
-	Signatures []*OrderSignature `json:"sigs"`
+func NewOrder(pair PairName, typ OrderType) *Order {
+	res := &Order{
+		RequestTime: uint64(time.Now().Unix()),
+		Pair:        pair,
+		Type:        typ,
+		Status:      OrderPending,
+	}
+
+	return res
 }
 
-type OrderSignature struct {
-	Issuer    string `json:"iss"` // name of signature issuer (if broker, broker id)
-	Signature string `json:"sig"` // base64url encoded signature
+func (o *Order) IsValid() error {
+	if o.OrderId == "" {
+		return ErrOrderIdMissing
+	}
+	if o.BrokerId == "" {
+		return ErrBrokerIdMissing
+	}
+	if !o.Type.IsValid() {
+		return ErrOrderTypeNotValid
+	}
+	if !o.Status.IsValid() {
+		return ErrOrderStatusNotValid
+	}
+
+	return nil
 }
 
 // Reverse reverses an order's pair, updating Amount and Price accordingly
