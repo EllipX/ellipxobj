@@ -8,10 +8,10 @@ type Order struct {
 	Pair        PairName    `json:"pair"`   // the name of the pair the order is on
 	Status      OrderStatus `json:"status"` // new orders will always be in "pending" state
 	Flags       OrderFlags  `json:"flags"`
-	Amount      *Amount     `json:"amount"`
-	Price       *Amount     `json:"price"` // price
-	SpendLimit  *Amount     `json:"spend_limit,omitempty"`
-	StopPrice   *Amount     `json:"stop_price,omitempty"` // ignored if flag Stop is not set
+	Amount      *Amount     `json:"amount,omitempty"`      // optional amount, if nil SpendLimit must be set
+	Price       *Amount     `json:"price,omitempty"`       // price, if nil this will be a market order
+	SpendLimit  *Amount     `json:"spend_limit,omitempty"` // optional spending limit, if nil Amount must be set
+	StopPrice   *Amount     `json:"stop_price,omitempty"`  // ignored if flag Stop is not set
 }
 
 type SignedOrder struct {
@@ -22,4 +22,23 @@ type SignedOrder struct {
 type OrderSignature struct {
 	Issuer    string `json:"iss"` // name of signature issuer (if broker, broker id)
 	Signature string `json:"sig"` // base64url encoded signature
+}
+
+// Reverse reverses an order's pair, updating Amount and Price accordingly
+func (o *Order) Reverse() *Order {
+	res := &Order{}
+	*res = *o // copy all values
+
+	// reverse pair
+	res.Pair = PairName{o.Pair[1], o.Pair[0]}
+
+	// reverse amount and spend limit
+	res.Amount, res.SpendLimit = o.SpendLimit, o.Amount
+
+	// if we have a target price, set it to 1/price
+	if o.Price != nil {
+		res.Price, _ = o.Price.Reciprocal()
+	}
+
+	return res
 }
