@@ -1,7 +1,6 @@
 package ellipxobj
 
 import (
-	"log"
 	"testing"
 )
 
@@ -11,6 +10,12 @@ func TestOrder(t *testing.T) {
 	a.Price, _ = NewAmountFromString("5", 5)
 
 	if a.String() != "buy 1.00000000 BTC @ 5.00000 USD/BTC" {
-		log.Printf("invalid order, expected buy 1.00000000 BTC @ 5.00000 USD/BTC, got %s", a.String())
+		t.Errorf("invalid order, expected buy 1.00000000 BTC @ 5.00000 USD/BTC, got %s", a.String())
+	}
+
+	// reverse order
+	b := a.Reverse()
+	if b.String() != "sell 1.00000000 BTC worth @ 0.20000 BTC/USD" {
+		t.Errorf("invalid order, expected, got %s", b.String())
 	}
 }
