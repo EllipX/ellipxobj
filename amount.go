@@ -1,7 +1,9 @@
 package ellipxobj
 
 import (
+	"encoding/json"
 	"math/big"
+	"strings"
 	"sync"
 )
 
@@ -54,6 +56,35 @@ func (a *Amount) Mul(x, y *Amount) (*Amount, big.Accuracy) {
 func (a *Amount) Reciprocal() (*Amount, big.Accuracy) {
 	v := new(big.Float).Quo(new(big.Float).SetInt64(1), a.Float())
 	return NewAmountFromFloat(v, a.Decimals)
+}
+
+func (a Amount) String() string {
+	// rather than converting to float, we simply convert the int to string in base 10 and add a decimal . at the right place
+	s := a.Value.Text(10)
+
+	if len(s) > a.Decimals {
+		p := len(s) - a.Decimals
+		return s[:p] + "." + s[p:]
+	}
+	if len(s) < a.Decimals {
+		// need to add zeroes
+		p := a.Decimals - len(s)
+		return "0." + strings.Repeat("0", p) + s
+	}
+
+	// len(s) == a.Decimals
+	return "0." + s
+}
+
+type amountJson struct {
+	Value    string `json:"v"`
+	Decimals int    `json:"dec"`
+}
+
+func (a *Amount) MarshalJSON() ([]byte, error) {
+	// an amount when marshalled becomes an object {"v":"123456","dec":5}
+	v := &amountJson{Value: a.Value.Text(10), Decimals: a.Decimals}
+	return json.Marshal(v)
 }
 
 var (
