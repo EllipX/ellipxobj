@@ -42,11 +42,7 @@ func NewAmountFromFloat(f *big.Float, decimals int) (*Amount, big.Accuracy) {
 	f = new(big.Float).Mul(f, exp10f(decimals))
 
 	// add 0.5 so that f.Int returns a rounded value
-	if f.Sign() < 0 {
-		f = f.Add(f, big.NewFloat(-0.5))
-	} else {
-		f = f.Add(f, big.NewFloat(0.5))
-	}
+	f = f.Add(f, big.NewFloat(0.5*float64(f.Sign())))
 	val, acc := f.Int(nil)
 
 	a := &Amount{
