@@ -1,6 +1,9 @@
 package ellipxobj
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 type Order struct {
 	OrderId     string      `json:"id"`                    // order ID assigned by the broker
@@ -26,6 +29,12 @@ func NewOrder(pair PairName, typ OrderType) *Order {
 	}
 
 	return res
+}
+
+func (o *Order) SetId(orderId, brokerId string) *Order {
+	o.OrderId = orderId
+	o.BrokerId = brokerId
+	return o
 }
 
 func (o *Order) IsValid() error {
@@ -63,6 +72,32 @@ func (o *Order) Reverse() *Order {
 	// if we have a target price, set it to 1/price
 	if o.Price != nil {
 		res.Price, _ = o.Price.Reciprocal()
+	}
+
+	return res
+}
+
+func (o *Order) String() string {
+	// transform order into a human friendly string, there are various cases we can process
+	if err := o.IsValid(); err != nil {
+		return fmt.Sprintf("(invalid order: %s)", err)
+	}
+
+	res := "buy"
+	if o.Type == TypeAsk {
+		res = "sell"
+	}
+	res += " "
+	if o.Amount != nil && o.SpendLimit != nil {
+		res += fmt.Sprintf("%s %s or up to %s %s worth", o.Amount, o.Pair[0], o.SpendLimit, o.Pair[1])
+	} else if o.SpendLimit != nil {
+		res += fmt.Sprintf("%s %s worth", o.SpendLimit, o.Pair[1])
+	} else if o.Amount != nil {
+		res += fmt.Sprintf("%s %s", o.Amount, o.Pair[0])
+	}
+
+	if o.Price != nil {
+		res += fmt.Sprintf(" @ %s %s/%s", o.Price, o.Pair[1], o.Pair[0])
 	}
 
 	return res

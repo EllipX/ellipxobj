@@ -42,6 +42,17 @@ func NewAmountFromFloat(f *big.Float, decimals int) (*Amount, big.Accuracy) {
 	return a, acc
 }
 
+// NewAmountFromString return a new [Amount] initialized with the passed string value
+func NewAmountFromString(s string, decimals int) (*Amount, error) {
+	f, _, err := big.ParseFloat(s, 0, big.MaxPrec, big.ToNearestEven)
+	if err != nil {
+		return nil, err
+	}
+
+	a, _ := NewAmountFromFloat(f, decimals)
+	return a, nil
+}
+
 // Mul sets a=x*y and returns a
 func (a *Amount) Mul(x, y *Amount) (*Amount, big.Accuracy) {
 	res := new(big.Float).Mul(x.Float(), y.Float())
