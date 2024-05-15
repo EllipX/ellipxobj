@@ -13,7 +13,7 @@ type Order struct {
 	Pair        PairName    `json:"pair"`                  // the name of the pair the order is on
 	Type        OrderType   `json:"type"`                  // type of order (buy or sell)
 	Status      OrderStatus `json:"status"`                // new orders will always be in "pending" state
-	Flags       OrderFlags  `json:"flags"`                 // order flags
+	Flags       OrderFlags  `json:"flags,omitempty"`       // order flags
 	Amount      *Amount     `json:"amount,omitempty"`      // optional amount, if nil SpendLimit must be set
 	Price       *Amount     `json:"price,omitempty"`       // price, if nil this will be a market order
 	SpendLimit  *Amount     `json:"spend_limit,omitempty"` // optional spending limit, if nil Amount must be set
