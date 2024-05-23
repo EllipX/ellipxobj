@@ -63,9 +63,14 @@ func (t *TimeId) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
-	vA := strings.SplitN(s, ":", 3)
-	if len(vA) != 3 {
+	vA := strings.SplitN(s, ":", 4)
+	if len(vA) < 3 {
 		return fmt.Errorf("invalid format for TimeId: %s", s)
+	}
+	typ := ""
+	if len(vA) == 4 {
+		typ = vA[0]
+		vA = vA[1:]
 	}
 	vN := make([]uint64, 3)
 	for n, sub := range vA {
@@ -75,6 +80,7 @@ func (t *TimeId) UnmarshalJSON(b []byte) error {
 		}
 	}
 
+	t.Type = typ
 	t.Unix = vN[0]
 	t.Nano = uint32(vN[1])
 	t.Index = uint32(vN[2])
