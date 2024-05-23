@@ -12,7 +12,8 @@ import (
 const TimeIdDataLen = 16 // number of bytes in a timeid
 
 type TimeId struct {
-	Unix  uint64 `json:"unix"`
+	Type  string `json:"type"` // order | trade
+	Unix  uint64 `json:"unix"` // unix timestamp in seconds
 	Nano  uint32 `json:"nano"` // [0, 999999999]
 	Index uint32 `json:"idx"`  // index if multiple ids are generated with the same unix/nano values
 }
@@ -46,6 +47,9 @@ func (t TimeId) Time() time.Time {
 }
 
 func (t TimeId) String() string {
+	if t.Type != "" {
+		return fmt.Sprintf("%s:%d:%d:%d", t.Type, t.Unix, t.Nano, t.Index)
+	}
 	return fmt.Sprintf("%d:%d:%d", t.Unix, t.Nano, t.Index)
 }
 
