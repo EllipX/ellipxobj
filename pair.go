@@ -1,6 +1,7 @@
 package ellipxobj
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"strings"
@@ -49,4 +50,11 @@ func (p *PairName) UnmarshalJSON(v []byte) error {
 	default:
 		return errors.New("cannot unmarshal json into pair")
 	}
+}
+
+// Hash returns a 32 bytes hash (sha256) representing the pair name with a nil
+// character between the two names
+func (p *PairName) Hash() [32]byte {
+	b := append([]byte(p[0]), append([]byte{0}, p[1]...)...)
+	return sha256.Sum256(b)
 }
