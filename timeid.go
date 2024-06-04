@@ -121,3 +121,26 @@ func (u *TimeIdUnique) Unique(t *TimeId) {
 	u.Last.Index += 1
 	*t = u.Last
 }
+
+// Cmp returns an integer comparing two TimeId time point. The result will be 0 if a == b, -1 if a < b, and +1 if a > b.
+func (a TimeId) Cmp(b TimeId) int {
+	if a.Unix > b.Unix {
+		return 1
+	} else if a.Unix < b.Unix {
+		return -1
+	}
+
+	if a.Nano > b.Nano {
+		return 1
+	} else if a.Nano < b.Nano {
+		return -1
+	}
+
+	if a.Index > b.Index {
+		return 1
+	} else if a.Index < b.Index {
+		return -1
+	}
+
+	return 0
+}
