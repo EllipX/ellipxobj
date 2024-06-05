@@ -118,6 +118,29 @@ func (o *Order) String() string {
 	return res
 }
 
+// NominalAmount returns the order's maximum amount if one can be computed, or nil
+func (a *Order) NominalAmount(amountExp int) *Amount {
+	if a.Price == nil {
+		// even if we have a SpendLimit, it can't be used without a price
+		return a.Amount
+	}
+	if a.Amount == nil {
+		// we have only Price+SpendLimit
+		return NewAmount(0, amountExp).Div(a.SpendLimit, a.Price)
+	}
+
+	amt := a.Amount
+	if a.SpendLimit != nil {
+		// we have both amount & spend limit
+		amt2 := NewAmount(0, amountExp).Div(a.SpendLimit, a.Price)
+		if amt.Cmp(amt2) > 0 {
+			// spend limit is lower than amount, return the spend limit amount
+			return amt2
+		}
+	}
+	return amt
+}
+
 // TradeAmount returns the order's trade amount in case it matches against b
 func (a *Order) TradeAmount(b *Order) *Amount {
 	amt := a.Amount
@@ -204,16 +227,25 @@ func (a *Order) Matches(b *Order) *Trade {
 	}
 }
 
-// Deduct deducts the trade's value from the order
-func (o *Order) Deduct(t *Trade) {
+// Deduct deducts the trade's value from the order, and return true if this order
+// is fully consumed. Note that even if an order isn't fully consumed, it might be
+// too low to be executed.
+func (o *Order) Deduct(t *Trade) bool {
+	fullyConsumed := false
 	if o.Amount != nil {
 		o.Amount = o.Amount.Sub(o.Amount, t.Amount)
+		if o.Amount.IsZero() {
+			fullyConsumed = true
+		}
 	}
 	if o.SpendLimit != nil {
 		o.SpendLimit = o.SpendLimit.Sub(o.SpendLimit, t.Spent())
 		if o.SpendLimit.Sign() < 0 {
 			// rounding may cause a <0 result
 			o.SpendLimit = NewAmount(0, o.SpendLimit.exp)
+			fullyConsumed = true
 		}
 	}
+
+	return fullyConsumed
 }
