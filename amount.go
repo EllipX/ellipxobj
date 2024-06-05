@@ -143,6 +143,14 @@ func (a Amount) String() string {
 	return "0." + s
 }
 
+// Cmp compares two amounts, assuming both have the same exponent
+func (a Amount) Cmp(b Amount) int {
+	if a.exp != b.exp {
+		panic("only amounts with same exponent can be compared")
+	}
+	return a.value.Cmp(b.value)
+}
+
 type amountJson struct {
 	Value string  `json:"v"`
 	Exp   int     `json:"e"`
