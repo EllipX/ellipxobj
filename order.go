@@ -117,3 +117,89 @@ func (o *Order) String() string {
 
 	return res
 }
+
+// TradeAmount returns the order's trade amount in case it matches against b
+func (a *Order) TradeAmount(b *Order) *Amount {
+	amt := a.Amount
+	if amt == nil {
+		// no amount means we have a spend limit
+		// open orders always have an amount, use that to put the right exp
+		// amount = a.SpendLimit / b.Price
+		amt = a.SpendLimit.Dup().SetExp(b.Amount.exp).Div(b.Price)
+	} else if a.SpendLimit != nil {
+		amt2 := a.SpendLimit.Dup().SetExp(b.Amount.exp).Div(b.Price)
+		if amt.Cmp(amt2) > 0 {
+			amt = amt2
+		}
+	}
+
+	// if amt > b.Amount, return b.Amount
+	if amt.Cmp(b.Amount) > 0 {
+		return b.Amount
+	}
+
+	return amt
+}
+
+// Matches returns a Trade if a can consume b
+// Because b is assumed to be an open order, it must have a Price
+func (a *Order) Matches(b *Order) *Trade {
+	switch a.Type {
+	case TypeBid:
+		if b.Type != TypeAsk {
+			return nil
+		}
+		if a.Price != nil {
+			if a.Price.Cmp(b.Price) < 0 {
+				// bid price lower than ask, trade cannot happen
+				return nil
+			}
+		}
+		// compute the traded amount
+		amt := a.TradeAmount(b)
+		if amt.IsZero() {
+			// nothing to trade
+			return nil
+		}
+
+		t := &Trade{
+			Pair:   a.Pair,
+			Bid:    a.Meta(),
+			Ask:    b.Meta(),
+			Type:   TypeBid,
+			Amount: amt,
+			Price:  b.Price,
+		}
+
+		return t
+	case TypeAsk:
+		if b.Type != TypeBid {
+			return nil
+		}
+		if a.Price != nil {
+			if a.Price.Cmp(b.Price) > 0 {
+				// ask price higher than bid, trade cannot happen
+				return nil
+			}
+		}
+		// compute the traded amount
+		amt := a.TradeAmount(b)
+		if amt.IsZero() {
+			// nothing to trade
+			return nil
+		}
+
+		t := &Trade{
+			Pair:   a.Pair,
+			Bid:    a.Meta(),
+			Ask:    b.Meta(),
+			Type:   TypeAsk,
+			Amount: amt,
+			Price:  b.Price,
+		}
+
+		return t
+	default:
+		return nil
+	}
+}

@@ -70,6 +70,14 @@ func NewAmountFromFloat(f *big.Float, decimals int) (*Amount, big.Accuracy) {
 	return a, acc
 }
 
+func (a Amount) Dup() *Amount {
+	res := &Amount{
+		value: new(big.Int).Set(a.value),
+		exp:   a.exp,
+	}
+	return res
+}
+
 // NewAmountFromString return a new [Amount] initialized with the passed string value
 func NewAmountFromString(s string, decimals int) (*Amount, error) {
 	f, _, err := big.ParseFloat(s, 0, 1024, big.ToNearestEven)
@@ -92,7 +100,7 @@ func (a *Amount) Mul(x, y *Amount) (*Amount, big.Accuracy) {
 }
 
 // Reciprocal returns 1/a in a newly allocated [Amount]
-func (a *Amount) Reciprocal() (*Amount, big.Accuracy) {
+func (a Amount) Reciprocal() (*Amount, big.Accuracy) {
 	v := new(big.Float).Quo(new(big.Float).SetInt64(1), a.Float())
 	return NewAmountFromFloat(v, a.exp)
 }
@@ -143,12 +151,24 @@ func (a Amount) String() string {
 	return "0." + s
 }
 
+func (a Amount) IsZero() bool {
+	return a.value.BitLen() == 0
+}
+
 // Cmp compares two amounts, assuming both have the same exponent
-func (a Amount) Cmp(b Amount) int {
+func (a Amount) Cmp(b *Amount) int {
 	if a.exp != b.exp {
 		panic("only amounts with same exponent can be compared")
 	}
 	return a.value.Cmp(b.value)
+}
+
+// Div return a/b using the largest exponent
+func (a *Amount) Div(b *Amount) *Amount {
+	exp := a.exp
+	a = a.Dup().SetExp(exp + b.exp)
+
+	return &Amount{value: new(big.Int).Quo(a.value, b.value), exp: exp}
 }
 
 type amountJson struct {

@@ -45,4 +45,10 @@ func TestAmount(t *testing.T) {
 	if c.String() != "210.00000" {
 		t.Errorf("expected 210.00000 but got %s", c.String())
 	}
+
+	c = a.Div(b)
+
+	if c.String() != "8.400" {
+		t.Errorf("expected 8.400 but got %s / %s = %s", a, b, c.String())
+	}
 }
