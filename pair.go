@@ -13,6 +13,14 @@ func Pair(a, b string) PairName {
 	return PairName{a, b}
 }
 
+func ParsePairName(s string) (PairName, error) {
+	pos := strings.IndexByte(s, '_')
+	if pos == -1 {
+		return PairName{"", ""}, errors.New("malformed pair")
+	}
+	return PairName{s[:pos], s[pos+1:]}, nil
+}
+
 func (p PairName) String() string {
 	return p[0] + "_" + p[1]
 }
