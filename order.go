@@ -125,9 +125,9 @@ func (a *Order) TradeAmount(b *Order) *Amount {
 		// no amount means we have a spend limit
 		// open orders always have an amount, use that to put the right exp
 		// amount = a.SpendLimit / b.Price
-		amt = a.SpendLimit.Dup().SetExp(b.Amount.exp).Div(b.Price)
+		amt = NewAmount(0, b.Amount.exp).Div(a.SpendLimit, b.Price)
 	} else if a.SpendLimit != nil {
-		amt2 := a.SpendLimit.Dup().SetExp(b.Amount.exp).Div(b.Price)
+		amt2 := NewAmount(0, b.Amount.exp).Div(a.SpendLimit, b.Price)
 		if amt.Cmp(amt2) > 0 {
 			amt = amt2
 		}
@@ -201,5 +201,19 @@ func (a *Order) Matches(b *Order) *Trade {
 		return t
 	default:
 		return nil
+	}
+}
+
+// Deduct deducts the trade's value from the order
+func (o *Order) Deduct(t *Trade) {
+	if o.Amount != nil {
+		o.Amount = o.Amount.Sub(o.Amount, t.Amount)
+	}
+	if o.SpendLimit != nil {
+		o.SpendLimit = o.SpendLimit.Sub(o.SpendLimit, t.Spent())
+		if o.SpendLimit.Sign() < 0 {
+			// rounding may cause a <0 result
+			o.SpendLimit = NewAmount(0, o.SpendLimit.exp)
+		}
 	}
 }

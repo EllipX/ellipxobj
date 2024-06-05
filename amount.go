@@ -155,6 +155,10 @@ func (a Amount) IsZero() bool {
 	return a.value.BitLen() == 0
 }
 
+func (a Amount) Sign() int {
+	return a.value.Sign()
+}
+
 // Cmp compares two amounts, assuming both have the same exponent
 func (a Amount) Cmp(b *Amount) int {
 	if a.exp != b.exp {
@@ -163,12 +167,37 @@ func (a Amount) Cmp(b *Amount) int {
 	return a.value.Cmp(b.value)
 }
 
-// Div return a/b using the largest exponent
-func (a *Amount) Div(b *Amount) *Amount {
-	exp := a.exp
-	a = a.Dup().SetExp(exp + b.exp)
+// Div sets a=x/y and returns a
+func (a *Amount) Div(x, y *Amount) *Amount {
+	// when we do x/y, the resulting exponent will be x.exp-y.exp, so we need to add a.exp to x.exp
+	x = x.Dup().SetExp(x.exp + a.exp)
 
-	return &Amount{value: new(big.Int).Quo(a.value, b.value), exp: exp}
+	a.value = a.value.Quo(x.value, y.value)
+	return a
+}
+
+// Add sets a=x+y and returns a
+func (a *Amount) Add(x, y *Amount) *Amount {
+	if x.exp != a.exp {
+		x = x.Dup().SetExp(a.exp)
+	}
+	if y.exp != a.exp {
+		y = y.Dup().SetExp(a.exp)
+	}
+	a.value = a.value.Add(x.value, y.value)
+	return a
+}
+
+// Sub sets a=x-y and returns a
+func (a *Amount) Sub(x, y *Amount) *Amount {
+	if x.exp != a.exp {
+		x = x.Dup().SetExp(a.exp)
+	}
+	if y.exp != a.exp {
+		y = y.Dup().SetExp(a.exp)
+	}
+	a.value = a.value.Sub(x.value, y.value)
+	return a
 }
 
 type amountJson struct {
