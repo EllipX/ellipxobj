@@ -180,7 +180,7 @@ func (a *Order) TradeAmount(b *Order) *Amount {
 
 	// if amt > b.Amount, return b.Amount
 	if amt.Cmp(b.Amount) > 0 {
-		return b.Amount
+		return b.Amount.Dup()
 	}
 
 	return amt

@@ -57,12 +57,14 @@ func TestMatchOrder(t *testing.T) {
 	a.RequestTime = 1715773941
 	a.Amount, _ = NewAmountFromFloat64(1, 8)
 	a.Price, _ = NewAmountFromString("5", 5)
+	a.SpendLimit, _ = NewAmountFromFloat64(5, 5)
 
 	b := NewOrder(Pair("BTC", "USD"), TypeAsk).SetId("1c3f54ff-1c8e-44ac-a067-c0e0ac7b944c", "test")
 	b.Unique = &TimeId{Unix: 1715773941, Nano: 987654321, Index: 43}
 	b.RequestTime = 1715773941
 	b.Amount, _ = NewAmountFromFloat64(0.5, 8)
 	b.Price, _ = NewAmountFromString("5", 5)
+	b.SpendLimit, _ = NewAmountFromFloat64(2.5, 5)
 
 	tradeAmt := a.TradeAmount(b)
 	if tradeAmt.String() != "0.50000000" {
