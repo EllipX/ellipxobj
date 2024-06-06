@@ -175,6 +175,8 @@ func (a *Order) TradeAmount(b *Order) *Amount {
 		amt2 := NewAmount(0, b.Amount.exp).Div(a.SpendLimit, b.Price)
 		if amt.Cmp(amt2) > 0 {
 			amt = amt2
+		} else {
+			amt = amt.Dup() // dup if keeping a.Amount
 		}
 	}
 
