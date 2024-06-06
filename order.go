@@ -81,13 +81,35 @@ func (o *Order) Reverse() *Order {
 	res.Pair = PairName{o.Pair[1], o.Pair[0]}
 	res.Type = o.Type.Reverse()
 
-	// reverse amount and spend limit
-	res.Amount, res.SpendLimit = o.SpendLimit, o.Amount
+	// reverse amount and spend limit, duplicate
+	res.Amount, res.SpendLimit = o.SpendLimit.Dup(), o.Amount.Dup()
 
 	// if we have a target price, set it to 1/price
 	if o.Price != nil {
 		res.Price, _ = o.Price.Reciprocal()
 	}
+
+	return res
+}
+
+// Dup returns a copy of Order including objects such as Amount duplicated
+func (o *Order) Dup() *Order {
+	if o == nil {
+		return nil
+	}
+
+	res := &Order{}
+	*res = *o
+
+	if o.Unique != nil {
+		res.Unique = &TimeId{}
+		*res.Unique = *o.Unique
+	}
+
+	res.Amount = o.Amount.Dup()
+	res.Price = o.Price.Dup()
+	res.SpendLimit = o.SpendLimit.Dup()
+	res.StopPrice = o.StopPrice.Dup()
 
 	return res
 }

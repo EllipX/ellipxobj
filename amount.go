@@ -70,7 +70,11 @@ func NewAmountFromFloat(f *big.Float, decimals int) (*Amount, big.Accuracy) {
 	return a, acc
 }
 
-func (a Amount) Dup() *Amount {
+// Dup returns a copy of the Amount object so that modifying one won't affect the other
+func (a *Amount) Dup() *Amount {
+	if a == nil {
+		return nil
+	}
 	res := &Amount{
 		value: new(big.Int).Set(a.value),
 		exp:   a.exp,
