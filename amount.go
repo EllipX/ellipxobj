@@ -174,7 +174,7 @@ func (a Amount) Cmp(b *Amount) int {
 // Div sets a=x/y and returns a
 func (a *Amount) Div(x, y *Amount) *Amount {
 	// when we do x/y, the resulting exponent will be x.exp-y.exp, so we need to add a.exp to x.exp
-	x = x.Dup().SetExp(x.exp + a.exp)
+	x = x.Dup().SetExp(y.exp + a.exp)
 
 	a.value = a.value.Quo(x.value, y.value)
 	return a
