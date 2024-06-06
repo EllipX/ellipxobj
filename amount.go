@@ -109,6 +109,11 @@ func (a Amount) Reciprocal() (*Amount, big.Accuracy) {
 	return NewAmountFromFloat(v, a.exp)
 }
 
+// Exp returns the amount's exp value
+func (a Amount) Exp() int {
+	return a.exp
+}
+
 // SetExp sets the number of decimals (exponent) of the amount, truncating or adding zeroes as needed
 func (a *Amount) SetExp(e int) *Amount {
 	if a.exp == e {
