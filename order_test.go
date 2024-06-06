@@ -75,5 +75,9 @@ func TestMatchOrder(t *testing.T) {
 	if trade == nil {
 		t.Errorf("no trade from [%s] vs [%s]", a, b)
 	}
+
+	a.Deduct(trade)
+	b.Deduct(trade)
+
 	log.Printf("trade = %+v", trade)
 }

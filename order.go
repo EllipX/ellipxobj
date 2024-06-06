@@ -175,14 +175,12 @@ func (a *Order) TradeAmount(b *Order) *Amount {
 		amt2 := NewAmount(0, b.Amount.exp).Div(a.SpendLimit, b.Price)
 		if amt.Cmp(amt2) > 0 {
 			amt = amt2
-		} else {
-			amt = amt.Dup() // dup if keeping a.Amount
 		}
 	}
 
 	// if amt > b.Amount, return b.Amount
 	if amt.Cmp(b.Amount) > 0 {
-		return b.Amount.Dup()
+		return b.Amount
 	}
 
 	return amt
@@ -214,7 +212,7 @@ func (a *Order) Matches(b *Order) *Trade {
 			Bid:    a.Meta(),
 			Ask:    b.Meta(),
 			Type:   TypeBid,
-			Amount: amt,
+			Amount: amt.Dup(),
 			Price:  b.Price,
 		}
 
@@ -241,7 +239,7 @@ func (a *Order) Matches(b *Order) *Trade {
 			Bid:    a.Meta(),
 			Ask:    b.Meta(),
 			Type:   TypeAsk,
-			Amount: amt,
+			Amount: amt.Dup(),
 			Price:  b.Price,
 		}
 
