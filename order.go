@@ -10,6 +10,7 @@ type Order struct {
 	BrokerId    string      `json:"iss"`                   // id of the broker
 	RequestTime uint64      `json:"iat"`                   // unix timestamp when the order was placed
 	Unique      *TimeId     `json:"uniq,omitempty"`        // unique ID allocated on order igress
+	Version     uint64      `json:"ver"`                   // value starting at zero incremented each time an order is modified
 	Pair        PairName    `json:"pair"`                  // the name of the pair the order is on
 	Type        OrderType   `json:"type"`                  // type of order (buy or sell)
 	Status      OrderStatus `json:"status"`                // new orders will always be in "pending" state
