@@ -46,11 +46,13 @@ func (t TimeId) Time() time.Time {
 	return time.Unix(int64(t.Unix), int64(t.Nano))
 }
 
+// String returns a string matching this TimeId
 func (t TimeId) String() string {
 	if t.Type != "" {
 		return fmt.Sprintf("%s:%d:%d:%d", t.Type, t.Unix, t.Nano, t.Index)
 	}
-	return fmt.Sprintf("%d:%d:%d", t.Unix, t.Nano, t.Index)
+	// Type should never be empty
+	return fmt.Sprintf("nil:%d:%d:%d", t.Unix, t.Nano, t.Index)
 }
 
 func (t TimeId) MarshalJSON() ([]byte, error) {
@@ -120,6 +122,13 @@ func (u *TimeIdUnique) Unique(t *TimeId) {
 	// re-use last
 	u.Last.Index += 1
 	*t = u.Last
+}
+
+// New returns a new TimeId that is unique within the scope of this TimeIdUnique
+func (u *TimeIdUnique) New() *TimeId {
+	t := NewTimeId()
+	u.Unique(t)
+	return t
 }
 
 // Cmp returns an integer comparing two TimeId time point. The result will be 0 if a == b, -1 if a < b, and +1 if a > b.
