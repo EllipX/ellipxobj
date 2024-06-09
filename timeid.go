@@ -89,14 +89,15 @@ func (t *TimeId) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// Bytes returns a 128bits bigendian sortable version of this TimeId
-func (t TimeId) Bytes() [TimeIdDataLen]byte {
-	var res [TimeIdDataLen]byte
-	binary.BigEndian.PutUint64(res[:8], t.Unix)
-	binary.BigEndian.PutUint32(res[8:12], t.Nano)
-	binary.BigEndian.PutUint32(res[12:], t.Index)
-
-	return res
+// Bytes returns a 128bits (TimeIdDataLen bytes) bigendian sortable version of this TimeId. If buf is not nil, the data
+// is appended to it.
+func (t TimeId) Bytes(buf []byte) []byte {
+	var tmp [8]byte
+	binary.BigEndian.PutUint64(tmp[:], t.Unix)
+	buf = append(buf, tmp[:]...)
+	binary.BigEndian.PutUint32(tmp[:4], t.Nano)
+	binary.BigEndian.PutUint32(tmp[4:], t.Index)
+	return append(buf, tmp[:]...)
 }
 
 // Unique ensures the provided [TimeId] is always higher than the latest

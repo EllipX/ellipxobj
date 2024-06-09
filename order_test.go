@@ -35,7 +35,7 @@ func TestMarshalOrder(t *testing.T) {
 		return
 	}
 
-	if string(data) != `{"id":"a9039a38-3bd4-4084-95d1-3548c1873c8b","iss":"test","iat":1715773941,"pair":["BTC","USD"],"type":"bid","status":"pending","amount":{"v":"100000000","e":8,"f":1},"price":{"v":"500000","e":5,"f":5}}` {
+	if string(data) != `{"id":"a9039a38-3bd4-4084-95d1-3548c1873c8b","iss":"test","iat":1715773941,"ver":0,"pair":["BTC","USD"],"type":"bid","status":"pending","amount":{"v":"100000000","e":8,"f":1},"price":{"v":"500000","e":5,"f":5}}` {
 		t.Errorf("unexpected format for marshalled order: %s", data)
 	}
 

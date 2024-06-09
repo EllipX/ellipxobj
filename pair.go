@@ -5,9 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"sync"
 )
 
 type PairName [2]string
+
+var (
+	pairHashCache   = make(map[PairName][]byte)
+	pairHashCacheLk sync.RWMutex
+)
 
 func Pair(a, b string) PairName {
 	return PairName{a, b}
@@ -62,7 +68,20 @@ func (p *PairName) UnmarshalJSON(v []byte) error {
 
 // Hash returns a 32 bytes hash (sha256) representing the pair name with a nil
 // character between the two names
-func (p *PairName) Hash() [32]byte {
+func (p PairName) Hash() []byte {
+	pairHashCacheLk.RLock()
+	v, ok := pairHashCache[p]
+	pairHashCacheLk.RUnlock()
+
+	if ok {
+		return v
+	}
+
+	pairHashCacheLk.Lock()
+	defer pairHashCacheLk.Unlock()
+
 	b := append([]byte(p[0]), append([]byte{0}, p[1]...)...)
-	return sha256.Sum256(b)
+	h := sha256.Sum256(b)
+	pairHashCache[p] = h[:]
+	return h[:]
 }
