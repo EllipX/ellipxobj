@@ -1,6 +1,9 @@
 package ellipxobj
 
-import "testing"
+import (
+	"encoding/hex"
+	"testing"
+)
 
 func TestAmount(t *testing.T) {
 	a := NewAmount(42000, 3)
@@ -50,5 +53,20 @@ func TestAmount(t *testing.T) {
 
 	if c.String() != "8.4000000000" {
 		t.Errorf("expected 8.400 but got %s / %s = %s", a, b, c.String())
+	}
+
+	v := c.Bytes()
+	if hex.EncodeToString(v) != "0014138eca4800" {
+		t.Errorf("expected 8.4 to become , got %s", hex.EncodeToString(v))
+	}
+
+	d := new(Amount)
+	err := d.UnmarshalBinary(v)
+	if err != nil {
+		t.Errorf("error unmarsha binary: %s", err)
+	}
+
+	if d.String() != c.String() {
+		t.Errorf("invalid unmarshal binary, value differs %s != %s", c, d)
 	}
 }

@@ -308,7 +308,7 @@ func (a *Amount) UnmarshalBinary(data []byte) error {
 
 	// all ready
 	a.exp = int(exp)
-	a.value = a.value.SetBytes(data[n+1:])
+	a.value = new(big.Int).SetBytes(data[n+1:])
 	return nil
 }
 
