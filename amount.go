@@ -2,6 +2,7 @@ package ellipxobj
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -280,6 +281,35 @@ func (a *Amount) UnmarshalJSON(b []byte) error {
 	default:
 		return fmt.Errorf("unsupported amount type %T", v)
 	}
+}
+
+func (a *Amount) Bytes() []byte {
+	// convert amount into bytes
+	// 0x00 (version) + exp (int) + val
+	buf := binary.AppendVarint([]byte{0x00}, int64(a.exp))
+	return append(buf, a.value.Bytes()...)
+}
+
+func (a *Amount) MarshalBinary() ([]byte, error) {
+	return a.Bytes(), nil
+}
+
+func (a *Amount) UnmarshalBinary(data []byte) error {
+	if len(data) < 2 {
+		return errors.New("data too short")
+	}
+	if data[0] != 0 {
+		return errors.New("invalid version")
+	}
+	exp, n := binary.Varint(data[1:])
+	if n <= 0 {
+		return errors.New("invalid amount encoding")
+	}
+
+	// all ready
+	a.exp = int(exp)
+	a.value = a.value.SetBytes(data[n+1:])
+	return nil
 }
 
 var (
