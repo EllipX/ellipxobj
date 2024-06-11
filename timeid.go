@@ -105,6 +105,7 @@ func (t TimeId) MarshalBinary() ([]byte, error) {
 	return t.Bytes(nil), nil
 }
 
+// UnmarshalBinary will convert a binary value back to TimeId. Type will not be kept
 func (t *TimeId) UnmarshalBinary(v []byte) error {
 	if len(v) != 16 {
 		return errors.New("bad data length for timeId")
