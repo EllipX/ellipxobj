@@ -3,6 +3,7 @@ package ellipxobj
 import (
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -98,6 +99,20 @@ func (t TimeId) Bytes(buf []byte) []byte {
 	binary.BigEndian.PutUint32(tmp[:4], t.Nano)
 	binary.BigEndian.PutUint32(tmp[4:], t.Index)
 	return append(buf, tmp[:]...)
+}
+
+func (t TimeId) MarshalBinary() ([]byte, error) {
+	return t.Bytes(nil), nil
+}
+
+func (t *TimeId) UnmarshalBinary(v []byte) error {
+	if len(v) != 16 {
+		return errors.New("bad data length for timeId")
+	}
+	t.Unix = binary.BigEndian.Uint64(v[:8])
+	t.Nano = binary.BigEndian.Uint32(v[8:12])
+	t.Index = binary.BigEndian.Uint32(v[12:])
+	return nil
 }
 
 // Unique ensures the provided [TimeId] is always higher than the latest
