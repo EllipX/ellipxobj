@@ -85,6 +85,13 @@ func (a *Amount) Dup() *Amount {
 
 // NewAmountFromString return a new [Amount] initialized with the passed string value
 func NewAmountFromString(s string, decimals int) (*Amount, error) {
+	if decimals == 0 {
+		v, ok := new(big.Int).SetString(s, 0)
+		if !ok {
+			return nil, ErrAmountParseFailed
+		}
+		return &Amount{value: v, exp: 0}, nil
+	}
 	f, _, err := big.ParseFloat(s, 0, 1024, big.ToNearestEven)
 	if err != nil {
 		return nil, err
@@ -92,6 +99,11 @@ func NewAmountFromString(s string, decimals int) (*Amount, error) {
 
 	a, _ := NewAmountFromFloat(f, decimals)
 	return a, nil
+}
+
+// NewAmountRaw returns a new [Amount] initialized with the passed values as is
+func NewAmountRaw(v *big.Int, decimals int) *Amount {
+	return &Amount{value: v, exp: decimals}
 }
 
 // Mul sets a=x*y and returns a
