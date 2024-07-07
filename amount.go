@@ -122,6 +122,11 @@ func (a Amount) Reciprocal() (*Amount, big.Accuracy) {
 	return NewAmountFromFloat(v, a.exp)
 }
 
+// Value returns the amount's value *big.Int
+func (a Amount) Value() *big.Int {
+	return a.value
+}
+
 // Exp returns the amount's exp value
 func (a Amount) Exp() int {
 	return a.exp
