@@ -249,6 +249,10 @@ func (a *Amount) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
+	return a.Scan(v)
+}
+
+func (a *Amount) Scan(v any) error {
 	switch in := v.(type) {
 	case string:
 		// parse string
