@@ -9,6 +9,8 @@ import (
 	"math/big"
 	"strings"
 	"sync"
+
+	"github.com/KarpelesLab/typutil"
 )
 
 // Amount is a fixed point value
@@ -274,18 +276,18 @@ func (a *Amount) Scan(v any) error {
 		// we expect to find v+e or f
 		// {"v":"100000000","e":8,"f":1}
 		v, vok := in["v"].(string)
-		e, eok := in["e"].(json.Number)
+		e, eok := in["e"]
 		if vok && eok {
 			realV, vok := new(big.Int).SetString(v, 0)
 			if !vok {
 				return errors.New("failed to parse v")
 			}
-			realE, err := e.Int64()
+			realE, err := typutil.As[int](e)
 			if err != nil {
 				return err
 			}
 			a.value = realV
-			a.exp = int(realE)
+			a.exp = realE
 			return nil
 		}
 		// attempt f
