@@ -291,9 +291,13 @@ func (a *Amount) Scan(v any) error {
 			return nil
 		}
 		// attempt f
-		f, fok := in["f"].(json.Number)
+		f, fok := in["f"]
 		if fok {
-			na, err := NewAmountFromString(string(f), 0)
+			sf, err := typutil.As[string](f)
+			if err != nil {
+				return err
+			}
+			na, err := NewAmountFromString(sf, 0)
 			if err != nil {
 				return err
 			}
