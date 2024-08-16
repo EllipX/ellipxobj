@@ -9,6 +9,8 @@ import (
 	"math/big"
 	"strings"
 	"sync"
+
+	"github.com/KarpelesLab/typutil"
 )
 
 // Amount is a fixed point value
@@ -252,6 +254,10 @@ func (a *Amount) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
+	return a.Scan(v)
+}
+
+func (a *Amount) Scan(v any) error {
 	switch in := v.(type) {
 	case string:
 		// parse string
@@ -273,24 +279,28 @@ func (a *Amount) UnmarshalJSON(b []byte) error {
 		// we expect to find v+e or f
 		// {"v":"100000000","e":8,"f":1}
 		v, vok := in["v"].(string)
-		e, eok := in["e"].(json.Number)
+		e, eok := in["e"]
 		if vok && eok {
 			realV, vok := new(big.Int).SetString(v, 0)
 			if !vok {
 				return errors.New("failed to parse v")
 			}
-			realE, err := e.Int64()
+			realE, err := typutil.As[int](e)
 			if err != nil {
 				return err
 			}
 			a.value = realV
-			a.exp = int(realE)
+			a.exp = realE
 			return nil
 		}
 		// attempt f
-		f, fok := in["f"].(json.Number)
+		f, fok := in["f"]
 		if fok {
-			na, err := NewAmountFromString(string(f), 0)
+			sf, err := typutil.As[string](f)
+			if err != nil {
+				return err
+			}
+			na, err := NewAmountFromString(sf, 0)
 			if err != nil {
 				return err
 			}
