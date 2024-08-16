@@ -183,6 +183,9 @@ func (a Amount) IsZero() bool {
 }
 
 func (a Amount) Sign() int {
+	if a.value == nil {
+		return 0
+	}
 	return a.value.Sign()
 }
 
