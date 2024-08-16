@@ -29,6 +29,9 @@ func NewAmount(value int64, decimals int) *Amount {
 }
 
 func (a Amount) Float() *big.Float {
+	if a.Sign() == 0 {
+		return new(big.Float)
+	}
 	res := new(big.Float).SetInt(a.value)
 
 	// divide by 10**exp
