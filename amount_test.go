@@ -2,8 +2,13 @@ package ellipxobj
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"testing"
 )
+
+type structWithAmount struct {
+	A Amount
+}
 
 func TestAmount(t *testing.T) {
 	a := NewAmount(42000, 3)
@@ -68,5 +73,12 @@ func TestAmount(t *testing.T) {
 
 	if d.String() != c.String() {
 		t.Errorf("invalid unmarshal binary, value differs %s != %s", c, d)
+	}
+
+	o := &structWithAmount{}
+
+	js, _ := json.Marshal(o)
+	if string(js) != `{"A":{"v":"0","e":0,"f":0}}` {
+		t.Errorf("unexpected value for invalid Amount: %s", js)
 	}
 }

@@ -29,6 +29,9 @@ func NewAmount(value int64, decimals int) *Amount {
 }
 
 func (a Amount) Float() *big.Float {
+	if a.Sign() == 0 {
+		return new(big.Float)
+	}
 	res := new(big.Float).SetInt(a.value)
 
 	// divide by 10**exp
@@ -239,6 +242,10 @@ type amountJson struct {
 }
 
 func (a *Amount) MarshalJSON() ([]byte, error) {
+	if a.value == nil {
+		v := &amountJson{Value: "0", Exp: a.exp}
+		return json.Marshal(v)
+	}
 	// an amount when marshalled becomes an object {"v":"123456","dec":5,"f":1.23456}
 	f, _ := a.Float().Float64()
 	v := &amountJson{Value: a.value.Text(10), Exp: a.exp, Float: f}
