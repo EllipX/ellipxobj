@@ -127,6 +127,12 @@ func (a Amount) Reciprocal() (*Amount, big.Accuracy) {
 	return NewAmountFromFloat(v, a.exp)
 }
 
+// Neg returns -a in a newly allocated [Amount]
+func (a Amount) Neg() *Amount {
+	v := new(big.Int).Neg(a.value)
+	return NewAmountRaw(v, a.exp)
+}
+
 // Value returns the amount's value *big.Int
 func (a Amount) Value() *big.Int {
 	return a.value
