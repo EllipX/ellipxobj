@@ -13,6 +13,11 @@ const (
 	FlagStop
 )
 
+// Has returns true if the flags contain all the check flags
+func (f OrderFlags) Has(chk OrderFlags) bool {
+	return f&chk == chk
+}
+
 func (f *OrderFlags) UnmarshalJSON(j []byte) error {
 	var flags []string
 	var res OrderFlags
