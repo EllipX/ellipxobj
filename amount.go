@@ -112,13 +112,14 @@ func NewAmountRaw(v *big.Int, decimals int) *Amount {
 }
 
 // Mul sets a=x*y and returns a
-func (a *Amount) Mul(x, y *Amount) (*Amount, big.Accuracy) {
-	res := new(big.Float).Mul(x.Float(), y.Float())
-	res = res.Mul(res, exp10f(a.exp))
-
-	var acc big.Accuracy
-	a.value, acc = res.Int(a.value)
-	return a, acc
+func (a *Amount) Mul(x, y *Amount) *Amount {
+	if a.value == nil {
+		a.value = new(big.Int)
+	}
+	a.value.Mul(x.value, y.value)
+	exp := a.exp
+	a.exp = x.exp + y.exp
+	return a.SetExp(exp)
 }
 
 // Reciprocal returns 1/a in a newly allocated [Amount]

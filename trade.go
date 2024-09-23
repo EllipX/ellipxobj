@@ -45,6 +45,5 @@ func (t *Trade) MarshalJSON() ([]byte, error) {
 
 // Spent returns the amount spent in that trade
 func (t *Trade) Spent() *Amount {
-	c, _ := NewAmount(0, t.Price.exp).Mul(t.Amount, t.Price)
-	return c
+	return NewAmount(0, t.Price.exp).Mul(t.Amount, t.Price)
 }

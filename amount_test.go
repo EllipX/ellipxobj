@@ -48,7 +48,7 @@ func TestAmount(t *testing.T) {
 	a = NewAmount(42000, 3)
 	b := NewAmount(500000, 5)
 
-	c, _ := NewAmount(0, 5).Mul(a, b)
+	c := NewAmount(0, 5).Mul(a, b)
 
 	if c.String() != "210.00000" {
 		t.Errorf("expected 210.00000 but got %s", c.String())
