@@ -42,6 +42,36 @@ func NewUniqueTimeId() *TimeId {
 	return t
 }
 
+func ParseTimeId(s string) (*TimeId, error) {
+	vA := strings.SplitN(s, ":", 4)
+	if len(vA) < 3 {
+		return nil, fmt.Errorf("invalid format for TimeId: %s", s)
+	}
+	typ := ""
+	if len(vA) == 4 {
+		typ = vA[0]
+		vA = vA[1:]
+	}
+	vN := make([]uint64, 3)
+	var err error
+	bits := 64
+	for n, sub := range vA {
+		vN[n], err = strconv.ParseUint(sub, 10, bits)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse TimeId element %s: %w", sub, err)
+		}
+		bits = 32
+	}
+
+	t := &TimeId{
+		Type:  typ,
+		Unix:  vN[0],
+		Nano:  uint32(vN[1]),
+		Index: uint32(vN[2]),
+	}
+	return t, nil
+}
+
 // Time returns the [TimeId] timestamp, which may be when the ID was generated
 func (t TimeId) Time() time.Time {
 	return time.Unix(int64(t.Unix), int64(t.Nano))
@@ -76,11 +106,13 @@ func (t *TimeId) UnmarshalJSON(b []byte) error {
 		vA = vA[1:]
 	}
 	vN := make([]uint64, 3)
+	bits := 64
 	for n, sub := range vA {
-		vN[n], err = strconv.ParseUint(sub, 10, 64)
+		vN[n], err = strconv.ParseUint(sub, 10, bits)
 		if err != nil {
 			return fmt.Errorf("failed to parse TimeId element %s: %w", sub, err)
 		}
+		bits = 32
 	}
 
 	t.Type = typ
