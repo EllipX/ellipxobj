@@ -2,6 +2,7 @@ package ellipxobj
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -46,4 +47,8 @@ func (t *Trade) MarshalJSON() ([]byte, error) {
 // Spent returns the amount spent in that trade
 func (t *Trade) Spent() *Amount {
 	return NewAmount(0, t.Price.exp).Mul(t.Amount, t.Price)
+}
+
+func (t *Trade) String() string {
+	return fmt.Sprintf("trade %s %s @ %s %s each (spent %s %s)", t.Amount, t.Pair[0], t.Price, t.Pair[1], t.Spent(), t.Pair[1])
 }
