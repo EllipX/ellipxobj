@@ -238,8 +238,8 @@ func (a *Order) Matches(b *Order) *Trade {
 
 		t := &Trade{
 			Pair:   a.Pair,
-			Bid:    a.Meta(),
-			Ask:    b.Meta(),
+			Bid:    b.Meta(),
+			Ask:    a.Meta(),
 			Type:   TypeAsk,
 			Amount: amt.Dup(),
 			Price:  b.Price,
