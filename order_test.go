@@ -81,3 +81,34 @@ func TestMatchOrder(t *testing.T) {
 
 	log.Printf("trade = %+v", trade)
 }
+
+func TestMatchSmallOrder(t *testing.T) {
+	a := NewOrder(Pair("BTC", "USD"), TypeBid).SetId("a9039a38-3bd4-4084-95d1-3548c1873c8b", "test")
+	a.Unique = &TimeId{Unix: 1715773941, Nano: 987654321, Index: 42}
+	a.RequestTime = 1715773941
+	a.Amount, _ = NewAmountFromFloat64(0.00001977, 8)
+	a.Price, _ = NewAmountFromString("5", 5)
+
+	b := NewOrder(Pair("BTC", "USD"), TypeAsk).SetId("1c3f54ff-1c8e-44ac-a067-c0e0ac7b944c", "test")
+	b.Unique = &TimeId{Unix: 1715773941, Nano: 987654321, Index: 43}
+	b.RequestTime = 1715773941
+	b.Amount, _ = NewAmountFromFloat64(0.00001977, 8)
+	b.Price, _ = NewAmountFromString("5", 5)
+
+	tradeAmt := a.TradeAmount(b)
+	if tradeAmt.String() != "0.00001977" {
+		t.Errorf("invalid trade amount %s, expected 0.50000000", tradeAmt)
+	}
+
+	trade := a.Matches(b)
+	if trade == nil {
+		t.Errorf("no trade from [%s] vs [%s]", a, b)
+	}
+
+	compa := a.Deduct(trade)
+	compb := b.Deduct(trade)
+
+	log.Printf("trade = %+v", trade)
+	log.Printf("order A = comp=%v %+v", compa, a)
+	log.Printf("order B = comp=%v %+v", compb, b)
+}

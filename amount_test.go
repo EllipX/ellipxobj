@@ -75,10 +75,30 @@ func TestAmount(t *testing.T) {
 		t.Errorf("invalid unmarshal binary, value differs %s != %s", c, d)
 	}
 
+	n := must(NewAmountFromString("15.0001000", 0))
+	if n.String() != "15.0001000" {
+		t.Errorf("bad string parse: got %s", n.String())
+	}
+	n = must(NewAmountFromString("123.45000e-4", 0))
+	if n.String() != "0.012345000" {
+		t.Errorf("bad string parse: got %s", n.String())
+	}
+	n = must(NewAmountFromString("42e8", 0))
+	if n.String() != "4200000000" {
+		t.Errorf("bad string parse: got %s", n.String())
+	}
+
 	o := &structWithAmount{}
 
 	js, _ := json.Marshal(o)
 	if string(js) != `{"A":{"v":"0","e":0,"f":0}}` {
 		t.Errorf("unexpected value for invalid Amount: %s", js)
 	}
+}
+
+func must[T any](v T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+	return v
 }

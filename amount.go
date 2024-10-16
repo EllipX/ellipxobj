@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -91,11 +92,43 @@ func (a *Amount) Dup() *Amount {
 // NewAmountFromString return a new [Amount] initialized with the passed string value
 func NewAmountFromString(s string, decimals int) (*Amount, error) {
 	if decimals == 0 {
-		v, ok := new(big.Int).SetString(s, 0)
+		pos := strings.IndexAny(s, "eE")
+		extraE := 0
+		if pos != -1 {
+			// we have a eXX value
+			v, err := strconv.ParseInt(s[pos+1:], 0, 64)
+			if err != nil {
+				return nil, fmt.Errorf("%w: %s", ErrAmountParseFailed, err)
+			}
+			extraE = 0 - int(v)
+			s = s[:pos]
+		}
+		pos = strings.IndexByte(s, '.')
+		if pos == -1 {
+			v, ok := new(big.Int).SetString(s, 0)
+			if !ok {
+				return nil, ErrAmountParseFailed
+			}
+			if extraE < 0 {
+				// adjust
+				v = v.Mul(v, exp10(0-extraE))
+				extraE = 0
+			}
+			return &Amount{value: v, exp: extraE}, nil
+		}
+		// we have a dot, assume decimal & take position of dot as value for e
+		e := len(s) - pos - 1
+		v, ok := new(big.Int).SetString(s[:pos]+s[pos+1:], 10)
 		if !ok {
 			return nil, ErrAmountParseFailed
 		}
-		return &Amount{value: v, exp: 0}, nil
+		e += extraE
+		if e < 0 {
+			// adjust
+			v = v.Mul(v, exp10(0-e))
+			e = 0
+		}
+		return &Amount{value: v, exp: e}, nil
 	}
 	f, _, err := big.ParseFloat(s, 0, 1024, big.ToNearestEven)
 	if err != nil {
@@ -175,6 +208,10 @@ func (a *Amount) SetExp(e int) *Amount {
 func (a Amount) String() string {
 	// rather than converting to float, we simply convert the int to string in base 10 and add a decimal . at the right place
 	s := a.value.Text(10)
+
+	if a.exp == 0 {
+		return s
+	}
 
 	if len(s) > a.exp {
 		p := len(s) - a.exp
