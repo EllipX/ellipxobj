@@ -285,7 +285,7 @@ type amountJson struct {
 	Float float64 `json:"f"`
 }
 
-func (a *Amount) MarshalJSON() ([]byte, error) {
+func (a Amount) MarshalJSON() ([]byte, error) {
 	if a.value == nil {
 		v := &amountJson{Value: "0", Exp: a.exp}
 		return json.Marshal(v)
@@ -364,14 +364,14 @@ func (a *Amount) Scan(v any) error {
 	}
 }
 
-func (a *Amount) Bytes() []byte {
+func (a Amount) Bytes() []byte {
 	// convert amount into bytes
 	// 0x00 (version) + exp (int) + val
 	buf := binary.AppendVarint([]byte{0x00}, int64(a.exp))
 	return append(buf, a.value.Bytes()...)
 }
 
-func (a *Amount) MarshalBinary() ([]byte, error) {
+func (a Amount) MarshalBinary() ([]byte, error) {
 	return a.Bytes(), nil
 }
 
