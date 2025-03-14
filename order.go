@@ -5,21 +5,32 @@ import (
 	"time"
 )
 
+// Order represents a financial trading order with all parameters needed to execute it.
+// An order can be either a buy (bid) or sell (ask) on a specific trading pair.
+//
+// Orders can be specified in two ways:
+// 1. Fixed Amount: Specifies the exact quantity of the base asset to trade
+// 2. SpendLimit: Specifies the maximum amount of the quote asset to spend/receive
+//
+// At least one of Amount or SpendLimit must be set for a valid order.
+//
+// Market orders have nil Price, while limit orders specify the desired price.
+// Orders can have various flags that modify their behavior (see OrderFlags).
 type Order struct {
-	OrderId     string      `json:"id"`                    // order ID assigned by the broker
-	BrokerId    string      `json:"iss"`                   // id of the broker
-	RequestTime uint64      `json:"iat"`                   // unix timestamp when the order was placed
-	Unique      *TimeId     `json:"uniq,omitempty"`        // unique ID allocated on order igress
-	Target      *TimeId     `json:"target,omitempty"`      // target order to be updated, instead of creating a new order
-	Version     uint64      `json:"ver"`                   // value starting at zero incremented each time an order is modified
-	Pair        PairName    `json:"pair"`                  // the name of the pair the order is on
-	Type        OrderType   `json:"type"`                  // type of order (buy or sell)
-	Status      OrderStatus `json:"status"`                // new orders will always be in "pending" state
-	Flags       OrderFlags  `json:"flags,omitempty"`       // order flags
-	Amount      *Amount     `json:"amount,omitempty"`      // optional amount, if nil SpendLimit must be set
-	Price       *Amount     `json:"price,omitempty"`       // price, if nil this will be a market order
-	SpendLimit  *Amount     `json:"spend_limit,omitempty"` // optional spending limit, if nil Amount must be set
-	StopPrice   *Amount     `json:"stop_price,omitempty"`  // ignored if flag Stop is not set
+	OrderId     string      `json:"id"`                    // Unique order ID assigned by the broker
+	BrokerId    string      `json:"iss"`                   // ID of the broker that issued this order
+	RequestTime uint64      `json:"iat"`                   // Unix timestamp when the order was placed
+	Unique      *TimeId     `json:"uniq,omitempty"`        // Unique ID allocated on order ingress for strict ordering
+	Target      *TimeId     `json:"target,omitempty"`      // Target order to be updated (for order modifications)
+	Version     uint64      `json:"ver"`                   // Version counter, incremented each time order is modified
+	Pair        PairName    `json:"pair"`                  // Trading pair (e.g., BTC_USD)
+	Type        OrderType   `json:"type"`                  // Type of order (BID/ASK, Buy/Sell)
+	Status      OrderStatus `json:"status"`                // Current status of the order (Pending, Open, Filled, etc.)
+	Flags       OrderFlags  `json:"flags,omitempty"`       // Special behavior flags (IOC, FOK, etc.)
+	Amount      *Amount     `json:"amount,omitempty"`      // Quantity of base asset to trade (if nil, SpendLimit must be set)
+	Price       *Amount     `json:"price,omitempty"`       // Limit price (if nil, this is a market order)
+	SpendLimit  *Amount     `json:"spend_limit,omitempty"` // Maximum amount of quote asset to spend/receive (if nil, Amount must be set)
+	StopPrice   *Amount     `json:"stop_price,omitempty"`  // Trigger price for stop orders (ignored if Stop flag not set)
 }
 
 type OrderMeta struct {
@@ -28,6 +39,17 @@ type OrderMeta struct {
 	Unique   *TimeId `json:"uniq,omitempty"`
 }
 
+// NewOrder creates a new order with the specified pair and type.
+// It initializes the order with the current time and sets the status to Pending.
+// After creation, the order should have OrderId and BrokerId set with SetId(),
+// and at least one of Amount or SpendLimit must be set for the order to be valid.
+//
+// Example:
+//
+//	order := NewOrder(Pair("BTC", "USD"), OrderBid).
+//	    SetId("order123", "broker1").
+//	    SetAmount(NewAmount(10000, 8)). // 0.1 BTC
+//	    SetPrice(NewAmount(2000000, 2)) // $20,000.00
 func NewOrder(pair PairName, typ OrderType) *Order {
 	res := &Order{
 		RequestTime: uint64(time.Now().Unix()),
@@ -39,6 +61,9 @@ func NewOrder(pair PairName, typ OrderType) *Order {
 	return res
 }
 
+// SetId sets the order and broker identifiers on this order.
+// Every order must have these IDs set before it can be considered valid.
+// Returns the order itself for method chaining.
 func (o *Order) SetId(orderId, brokerId string) *Order {
 	o.OrderId = orderId
 	o.BrokerId = brokerId
@@ -142,45 +167,75 @@ func (o *Order) String() string {
 	return res
 }
 
-// NominalAmount returns the order's maximum amount if one can be computed, or nil
+// NominalAmount calculates and returns the effective quantity of the base asset
+// that would be traded, considering both Amount and SpendLimit constraints.
+//
+// This method handles different order configurations:
+// - For market orders (nil Price) with Amount: Returns the Amount directly
+// - For market orders with only SpendLimit: Returns nil (cannot calculate without price)
+// - For limit orders with only SpendLimit: Calculates Amount = SpendLimit / Price
+// - For limit orders with both Amount and SpendLimit: Returns the smaller of:
+//   - The specified Amount
+//   - The calculated amount based on SpendLimit/Price
+//
+// The amountExp parameter specifies the decimal precision for the returned Amount.
 func (a *Order) NominalAmount(amountExp int) *Amount {
 	if a.Price == nil {
+		// For market orders (nil Price), we can't calculate based on SpendLimit
 		// even if we have a SpendLimit, it can't be used without a price
 		return a.Amount
 	}
+
 	if a.Amount == nil {
-		// we have only Price+SpendLimit
+		// We have only Price+SpendLimit (SpendLimit-based limit order)
+		// Calculate Amount = SpendLimit / Price
 		return NewAmount(0, amountExp).Div(a.SpendLimit, a.Price)
 	}
 
+	// We have an Amount, possibly with a SpendLimit too
 	amt := a.Amount
 	if a.SpendLimit != nil {
-		// we have both amount & spend limit
+		// We have both Amount & SpendLimit - check which is more restrictive
 		amt2 := NewAmount(0, amountExp).Div(a.SpendLimit, a.Price)
 		if amt.Cmp(amt2) > 0 {
-			// spend limit is lower than amount, return the spend limit amount
+			// SpendLimit is more restrictive than Amount, use it instead
 			return amt2
 		}
 	}
 	return amt
 }
 
-// TradeAmount returns the order's trade amount in case it matches against b
+// TradeAmount calculates the actual amount that can be traded between this order and order b.
+// This is a key component of the matching engine, determining the exact quantity
+// to use when creating a trade between two orders.
+//
+// The method calculates this by considering:
+// 1. This order's Amount and/or SpendLimit (converted to an amount using b's Price)
+// 2. The available amount in the counterparty order (b.Amount)
+//
+// For SpendLimit-based orders, the amount is calculated as SpendLimit/Price.
+// When both Amount and SpendLimit are specified, the more restrictive one is used.
+// The result is further limited by the available amount in order b.
+//
+// Returns the maximum amount that can be traded between the two orders.
 func (a *Order) TradeAmount(b *Order) *Amount {
+	// Calculate the maximum amount this order can trade
 	amt := a.Amount
 	if amt == nil {
-		// no amount means we have a spend limit
-		// open orders always have an amount, use that to put the right exp
-		// amount = a.SpendLimit / b.Price
+		// No Amount means we have a SpendLimit
+		// Calculate amount = SpendLimit / Price
+		// Use b.Amount's precision for consistent decimal handling
 		amt = NewAmount(0, b.Amount.exp).Div(a.SpendLimit, b.Price)
 	} else if a.SpendLimit != nil {
+		// We have both Amount and SpendLimit - check which is more restrictive
 		amt2 := NewAmount(0, b.Amount.exp).Div(a.SpendLimit, b.Price)
 		if amt.Cmp(amt2) > 0 {
+			// SpendLimit is more restrictive than Amount
 			amt = amt2
 		}
 	}
 
-	// if amt > b.Amount, return b.Amount
+	// Limit by the available amount in order b
 	if amt.Cmp(b.Amount) > 0 {
 		return b.Amount
 	}
@@ -188,84 +243,124 @@ func (a *Order) TradeAmount(b *Order) *Amount {
 	return amt
 }
 
-// Matches returns a Trade if a can consume b
-// Because b is assumed to be an open order, it must have a Price
+// Matches determines if this order (a) can match with the provided order (b),
+// returning a Trade object if a match is possible, or nil if no match can occur.
+//
+// For a match to occur:
+// 1. Orders must have opposite types (bid vs ask)
+// 2. For limit orders, prices must be compatible:
+//   - For a bid (buy), a.Price must be >= b.Price
+//   - For an ask (sell), a.Price must be <= b.Price
+//
+// 3. There must be a non-zero amount that can be traded
+//
+// The order 'b' is assumed to be an open resting order with a defined Price.
+// The price used for the trade will be b.Price (the resting order's price),
+// providing price improvement for the incoming order when possible.
+//
+// The Type field in the returned Trade indicates the type of the incoming order (a).
 func (a *Order) Matches(b *Order) *Trade {
 	switch a.Type {
-	case TypeBid:
+	case TypeBid: // This is a buy order
+		// Check order type compatibility
 		if b.Type != TypeAsk {
-			return nil
+			return nil // Can't match buy with buy
 		}
+
+		// Check price compatibility for limit orders
 		if a.Price != nil {
 			if a.Price.Cmp(b.Price) < 0 {
-				// bid price lower than ask, trade cannot happen
+				// Bid price lower than ask price, trade cannot happen
 				return nil
 			}
 		}
-		// compute the traded amount
+
+		// Compute the tradable amount considering Amount and SpendLimit
 		amt := a.TradeAmount(b)
 		if amt.IsZero() {
-			// nothing to trade
+			// Nothing to trade
 			return nil
 		}
 
+		// Create the trade object
 		t := &Trade{
 			Pair:   a.Pair,
-			Bid:    a.Meta(),
-			Ask:    b.Meta(),
-			Type:   TypeBid,
-			Amount: amt.Dup(),
-			Price:  b.Price,
+			Bid:    a.Meta(),  // This order is the bid
+			Ask:    b.Meta(),  // The other order is the ask
+			Type:   TypeBid,   // The trade is from the perspective of this order
+			Amount: amt.Dup(), // Copy the amount to avoid side effects
+			Price:  b.Price,   // Use the resting order's price
 		}
 
 		return t
-	case TypeAsk:
+
+	case TypeAsk: // This is a sell order
+		// Check order type compatibility
 		if b.Type != TypeBid {
-			return nil
+			return nil // Can't match sell with sell
 		}
+
+		// Check price compatibility for limit orders
 		if a.Price != nil {
 			if a.Price.Cmp(b.Price) > 0 {
-				// ask price higher than bid, trade cannot happen
+				// Ask price higher than bid price, trade cannot happen
 				return nil
 			}
 		}
-		// compute the traded amount
+
+		// Compute the tradable amount considering Amount and SpendLimit
 		amt := a.TradeAmount(b)
 		if amt.IsZero() {
-			// nothing to trade
+			// Nothing to trade
 			return nil
 		}
 
+		// Create the trade object
 		t := &Trade{
 			Pair:   a.Pair,
-			Bid:    b.Meta(),
-			Ask:    a.Meta(),
-			Type:   TypeAsk,
-			Amount: amt.Dup(),
-			Price:  b.Price,
+			Bid:    b.Meta(),  // The other order is the bid
+			Ask:    a.Meta(),  // This order is the ask
+			Type:   TypeAsk,   // The trade is from the perspective of this order
+			Amount: amt.Dup(), // Copy the amount to avoid side effects
+			Price:  b.Price,   // Use the resting order's price
 		}
 
 		return t
+
 	default:
-		return nil
+		return nil // Invalid order type
 	}
 }
 
-// Deduct deducts the trade's value from the order, and return true if this order
-// is fully consumed. Note that even if an order isn't fully consumed, it might be
-// too low to be executed.
+// Deduct reduces this order's Amount and/or SpendLimit by the quantities in the given trade.
+// This is called after a trade is executed to update the order's remaining quantities.
+//
+// The method handles both Amount-based and SpendLimit-based orders:
+// - For Amount-based orders: Reduces Amount by the trade's Amount
+// - For SpendLimit-based orders: Reduces SpendLimit by the trade's Spent value
+// - For orders with both: Reduces both values appropriately
+//
+// Returns true if the order is fully consumed (either Amount or SpendLimit reduced to zero).
+// Note that even if this method returns false (order not fully consumed), the remaining
+// quantity might be too small to execute further trades.
+//
+// This method modifies the order in place and should be called only once per trade.
 func (o *Order) Deduct(t *Trade) bool {
 	fullyConsumed := false
+
+	// Update Amount if set
 	if o.Amount != nil {
 		o.Amount = o.Amount.Sub(o.Amount, t.Amount)
 		if o.Amount.IsZero() {
 			fullyConsumed = true
 		}
 	}
+
+	// Update SpendLimit if set
 	if o.SpendLimit != nil {
 		o.SpendLimit = o.SpendLimit.Sub(o.SpendLimit, t.Spent())
 		if o.SpendLimit.Sign() < 0 {
-			// rounding may cause a <0 result
+			// Rounding may cause a negative result, set to zero in that case
 			o.SpendLimit = NewAmount(0, o.SpendLimit.exp)
 			fullyConsumed = true
 		}

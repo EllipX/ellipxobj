@@ -1,3 +1,4 @@
+// Package ellipxobj provides core types for a trading/exchange system.
 package ellipxobj
 
 import (
@@ -14,13 +15,17 @@ import (
 	"github.com/KarpelesLab/typutil"
 )
 
-// Amount is a fixed point value
+// Amount represents a fixed-point decimal value with arbitrary precision.
+// It uses a big.Int for the value and an exponent to represent the decimal position.
+// For example, 123.456 would be stored as value=123456 and exp=3.
+// This allows for precise decimal arithmetic without floating-point errors.
 type Amount struct {
-	value *big.Int
-	exp   int
+	value *big.Int // The integer value (significand)
+	exp   int      // The exponent (number of decimal places)
 }
 
-// NewAmount returns a new Amount object set to the specific value and decimals
+// NewAmount returns a new Amount object set to the specific value and decimals.
+// For example, NewAmount(12345, 2) creates the value 123.45
 func NewAmount(value int64, decimals int) *Amount {
 	a := &Amount{
 		value: big.NewInt(value),
@@ -29,6 +34,9 @@ func NewAmount(value int64, decimals int) *Amount {
 	return a
 }
 
+// Float converts the Amount to a big.Float representation.
+// This method divides the internal integer value by 10^exp to get the
+// actual decimal value. Returns zero for zero amounts.
 func (a Amount) Float() *big.Float {
 	if a.Sign() == 0 {
 		return new(big.Float)
@@ -39,12 +47,18 @@ func (a Amount) Float() *big.Float {
 	return res.Quo(res, exp10f(a.exp))
 }
 
-// NewAmountFromFloat64 return a new [Amount] initialized with the value f stored with the specified number of decimals
+// NewAmountFromFloat64 returns a new Amount initialized with the value f
+// stored with the specified number of decimal places.
+// Returns the Amount and the accuracy of the conversion.
 func NewAmountFromFloat64(f float64, exp int) (*Amount, big.Accuracy) {
 	return NewAmountFromFloat(big.NewFloat(f), exp)
 }
 
-// NewAmountFromFloat return a new [Amount] initialized with the value f stored with the specified number of decimals
+// NewAmountFromFloat returns a new Amount initialized with the big.Float value
+// stored with the specified number of decimal places.
+// If decimals <= 0, it will automatically determine an appropriate precision
+// based on the input value, with a minimum of 5 decimal places.
+// Returns the Amount and the accuracy of the conversion.
 func NewAmountFromFloat(f *big.Float, decimals int) (*Amount, big.Accuracy) {
 	if decimals <= 0 {
 		// let's attempt to guess a good decimal value
@@ -144,7 +158,11 @@ func NewAmountRaw(v *big.Int, decimals int) *Amount {
 	return &Amount{value: v, exp: decimals}
 }
 
-// Mul sets a=x*y and returns a
+// Mul sets a=x*y and returns a.
+// The multiplication preserves the desired exponent in parameter 'a'
+// by automatically adjusting precision after multiplying the values.
+// For example, with a.exp=5, x=1.23 (exp=2), y=4.56 (exp=2),
+// the result will be 5.60880 adjusted to have 5 decimal places.
 func (a *Amount) Mul(x, y *Amount) *Amount {
 	if a.value == nil {
 		a.value = new(big.Int)
@@ -155,13 +173,16 @@ func (a *Amount) Mul(x, y *Amount) *Amount {
 	return a.SetExp(exp)
 }
 
-// Reciprocal returns 1/a in a newly allocated [Amount]
+// Reciprocal returns 1/a in a newly allocated Amount.
+// Returns the Amount and the accuracy of the calculation.
+// The precision is maintained at the same level as the original Amount.
 func (a Amount) Reciprocal() (*Amount, big.Accuracy) {
 	v := new(big.Float).Quo(new(big.Float).SetInt64(1), a.Float())
 	return NewAmountFromFloat(v, a.exp)
 }
 
-// Neg returns -a in a newly allocated [Amount]
+// Neg returns -a (the negation) in a newly allocated Amount.
+// The exponent/precision remains unchanged.
 func (a Amount) Neg() *Amount {
 	v := new(big.Int).Neg(a.value)
 	return NewAmountRaw(v, a.exp)
@@ -177,7 +198,16 @@ func (a Amount) Exp() int {
 	return a.exp
 }
 
-// SetExp sets the number of decimals (exponent) of the amount, truncating or adding zeroes as needed
+// SetExp sets the number of decimals (exponent) of the amount.
+// When increasing precision (e > a.exp), this adds zeros to the right.
+// When decreasing precision (e < a.exp), this rounds the value to the nearest
+// decimal place using banker's rounding (round half to even).
+//
+// Examples:
+// - Setting 123.456 from exp=3 to exp=5 gives 123.45600
+// - Setting 123.456 from exp=3 to exp=2 gives 123.46
+//
+// Returns the amount itself for method chaining.
 func (a *Amount) SetExp(e int) *Amount {
 	if a.exp == e {
 		// no change
@@ -185,14 +215,15 @@ func (a *Amount) SetExp(e int) *Amount {
 	}
 
 	if e > a.exp {
+		// Increasing precision (adding decimal places)
 		add := e - a.exp
 		a.exp = e
 		a.value = a.value.Mul(a.value, exp10(add))
 		return a
 	}
 
-	// e < a.exp
-	// using the trick of adding 0.5 (half of exp10(sub)) to cause rounding to happen
+	// Decreasing precision (removing decimal places)
+	// Using the trick of adding 0.5 (half of exp10(sub)) to cause rounding to happen
 	sub := a.exp - e
 	e10 := exp10(sub)
 	e10half := new(big.Int).Quo(e10, big.NewInt(2)) // 1/2
@@ -246,16 +277,22 @@ func (a Amount) Cmp(b *Amount) int {
 	return a.value.Cmp(b.value)
 }
 
-// Div sets a=x/y and returns a
+// Div sets a=x/y and returns a.
+// The division ensures appropriate precision by automatically
+// adjusting x's exponent before performing the division.
+// The result maintains the precision specified in parameter 'a'.
 func (a *Amount) Div(x, y *Amount) *Amount {
-	// when we do x/y, the resulting exponent will be x.exp-y.exp, so we need to add a.exp to x.exp
+	// When we do x/y, the resulting exponent will be x.exp-y.exp,
+	// so we need to add a.exp to x.exp to achieve the desired precision
 	x = x.Dup().SetExp(y.exp + a.exp)
 
 	a.value = a.value.Quo(x.value, y.value)
 	return a
 }
 
-// Add sets a=x+y and returns a
+// Add sets a=x+y and returns a.
+// Before adding, both x and y are converted to match the precision of 'a'.
+// This ensures that decimal places align correctly during addition.
 func (a *Amount) Add(x, y *Amount) *Amount {
 	if x.exp != a.exp {
 		x = x.Dup().SetExp(a.exp)
@@ -267,7 +304,9 @@ func (a *Amount) Add(x, y *Amount) *Amount {
 	return a
 }
 
-// Sub sets a=x-y and returns a
+// Sub sets a=x-y and returns a.
+// Before subtracting, both x and y are converted to match the precision of 'a'.
+// This ensures that decimal places align correctly during subtraction.
 func (a *Amount) Sub(x, y *Amount) *Amount {
 	if x.exp != a.exp {
 		x = x.Dup().SetExp(a.exp)
@@ -393,14 +432,19 @@ func (a *Amount) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
+// Thread-safe caches for powers of 10 calculations.
+// These are used to optimize repeated calculations of common exponents.
 var (
-	exp10cache  = make(map[int]*big.Int)
-	exp10fcache = make(map[int]*big.Float)
-	exp10lock   sync.RWMutex
+	exp10cache  = make(map[int]*big.Int)   // Cache for 10^n as big.Int values
+	exp10fcache = make(map[int]*big.Float) // Cache for 10^n as big.Float values
+	exp10lock   sync.RWMutex               // RWMutex to protect concurrent access to caches
 )
 
-// exp10 returns 10**v as [big.Int], caching results since it's likely we'll need the same values more than once
+// exp10 returns 10^v as a big.Int with thread-safe caching.
+// This function is used extensively for exponent-related calculations,
+// and caching improves performance significantly for repeated operations.
 func exp10(v int) *big.Int {
+	// First check the cache with a read lock
 	exp10lock.RLock()
 	res, ok := exp10cache[v]
 	exp10lock.RUnlock()
@@ -409,8 +453,10 @@ func exp10(v int) *big.Int {
 		return res
 	}
 
+	// Cache miss - calculate the value
 	res = new(big.Int).Exp(new(big.Int).SetInt64(10), new(big.Int).SetInt64(int64(v)), nil)
 
+	// Store in cache with a write lock
 	exp10lock.Lock()
 	defer exp10lock.Unlock()
 
@@ -418,8 +464,11 @@ func exp10(v int) *big.Int {
 	return res
 }
 
-// exp10f returns 10**v as [big.Float], caching results since it's likely we'll need the same values more than once
+// exp10f returns 10^v as a big.Float with thread-safe caching.
+// Like exp10, this optimizes floating point calculations involving powers of 10.
+// It reuses the exp10 function's result and converts it to a big.Float.
 func exp10f(v int) *big.Float {
+	// First check the cache with a read lock
 	exp10lock.RLock()
 	res, ok := exp10fcache[v]
 	exp10lock.RUnlock()
@@ -428,8 +477,10 @@ func exp10f(v int) *big.Float {
 		return res
 	}
 
+	// Cache miss - convert from integer version
 	res = new(big.Float).SetInt(exp10(v))
 
+	// Store in cache with a write lock
 	exp10lock.Lock()
 	defer exp10lock.Unlock()
 
