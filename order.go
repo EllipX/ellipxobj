@@ -19,6 +19,7 @@ import (
 type Order struct {
 	OrderId     string      `json:"id"`                    // Unique order ID assigned by the broker
 	BrokerId    string      `json:"iss"`                   // ID of the broker that issued this order
+	UserId      string      `json:"usr,omitempty"`         // Id of the user owner of the order
 	RequestTime uint64      `json:"iat"`                   // Unix timestamp when the order was placed
 	Unique      *TimeId     `json:"uniq,omitempty"`        // Unique ID allocated on order ingress for strict ordering
 	Target      *TimeId     `json:"target,omitempty"`      // Target order to be updated (for order modifications)
